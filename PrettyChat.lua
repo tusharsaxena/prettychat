@@ -1,6 +1,6 @@
 --[[
 Author	: aDd1kTeD2Ka0s
-Version	: 0.0.1
+Version	: 0.0.2-release
 ]]
 
 local frame = CreateFrame("FRAME", "LootLiteFrame");
