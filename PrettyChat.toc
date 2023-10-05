@@ -1,0 +1,8 @@
+## Interface: 100107
+## X-Interface: 100107
+## Title: |cffff0000P|cffff9900r|cffffff00e|cff00ff00t|cff00fffft|cff4a86e8y |cff0000ffC|cff9900ffh|cffff00ffa|cffefefeft|r
+## Version: 2023.10.05
+## Author: aDd1kTeD2Ka0s
+## Notes: Prettier chat messages
+## iconTexture: 2056011
+PrettyChat.lua
