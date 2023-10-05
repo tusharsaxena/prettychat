@@ -1,8 +1,3 @@
---[[
-Author	: aDd1kTeD2Ka0s
-Version	: 0.0.2-release
-]]
-
 local frame = CreateFrame("FRAME", "LootLiteFrame");
 frame:RegisterEvent('PLAYER_ENTERING_WORLD');
 
