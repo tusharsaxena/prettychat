@@ -14,19 +14,26 @@ _**With Pretty Chat**_
 
 ### Features include
 
-**Simplicity**: Pretty Chat works out of the box. No messing about with configurations and settings windows. In a future update, configuration will be available but completely optional.
+**Configurable**: Pretty Chat works out of the box with beautiful defaults, and includes a full configuration UI accessible via `/pc` for fine-tuning every format string.
 
 **Colorful Text**: Express yourself like never before with Pretty Chat's support for colored text and emojis. Add a splash of color to your messages during epic battles or lighthearted role-playing sessions.
 
 **Addon Compatibility**: Pretty Chat seamlessly integrates with other popular World of Warcraft addons, ensuring that your chat remains beautiful and functional no matter what other enhancements you use.
 
+### Configuration
+
+Type `/pc` or `/prettychat` in-game to open the settings panel. From there you can:
+
+- **Enable/disable categories** — Toggle entire groups of format strings (Loot, Currency, Money, Reputation, Experience, Honor, Tradeskill, Misc) on or off.
+- **Enable/disable individual strings** — Each format string has its own toggle, so you can selectively override only the strings you want. Disabled strings revert to Blizzard defaults.
+- **Edit individual strings** — Each format string is shown with raw WoW escape codes so you can tweak colors and labels directly. A preview edit box beneath each input shows the current value.
+- **Reset to defaults** — Reset a single category or all categories back to the built-in PrettyChat formatting at any time.
+
+Settings are saved per-character profile via AceDB.
+
 ### How it works
 
 Pretty Chat does not do any sort of parsing of chat messages, instead it overrides the format of [GlobalStrings.lua](https://www.townlong-yak.com/framexml/live/Helix/GlobalStrings.lua) and changes the formatting of those strings. Because of this, it should work out of the box for the default Blizzard interface or any sort of UI package such as ElvUI.
-
-### What is not supported ... yet
-
-For now, this addon only works with the Retail version of WoW, but adding Classic and Classic Era support is on the TODO list.
 
 ### Bug Reports
 
@@ -35,6 +42,18 @@ Please report any issues in the [Issues](https://github.com/tusharsaxena/prettyc
 ## Version History
 
 # Changelog
+
+***1.2.0***
+- Per-string enable/disable toggles — selectively override individual format strings
+- Disabled strings now revert to Blizzard defaults instead of staying overridden
+- Improved settings panel layout with spacers and horizontal rules between string sets
+
+***1.1.0***
+- Added full configuration UI (accessible via `/pc` or `/prettychat`)
+- Per-string customization with live preview
+- Per-category enable/disable toggles
+- Reset to defaults (per-category or all at once)
+- AceDB profile support for saved settings
 
 ***1.0.0***
 - Updated the TOC to 120000

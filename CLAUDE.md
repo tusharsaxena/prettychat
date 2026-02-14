@@ -7,20 +7,79 @@ PrettyChat is a World of Warcraft addon that reformats chat messages (loot, curr
 ## Project Structure
 
 ```
-PrettyChat.toc    # Addon metadata (Interface version, title, author, file list)
-PrettyChat.lua    # Entire addon logic - single file
-README.md         # CurseForge/GitHub description with screenshots
-.gitignore        # OS/editor ignores
+PrettyChat.toc      # Addon metadata, file load order, SavedVariables
+PrettyChat.lua      # Core addon (AceAddon, AceDB, AceConsole)
+Config.lua          # AceConfig-based settings UI
+Defaults.lua        # PrettyChatDefaults table (all format strings)
+GlobalStrings.lua   # Bundled Blizzard reference (~1.57 MB)
+README.md           # CurseForge/GitHub description with screenshots
+.gitignore          # OS/editor ignores
+Libs/               # Bundled Ace3 libraries
 ```
-
-This is a minimal, single-file addon with no dependencies, no SavedVariables, and no configuration UI.
 
 ## How It Works
 
-- Creates a frame that listens for `PLAYER_ENTERING_WORLD`
-- On that event, overrides global string constants (e.g., `LOOT_ITEM`, `CURRENCY_GAINED`, `FACTION_STANDING_INCREASED`) with colorized versions
+- AceAddon initialization (`OnInitialize`) → creates AceDB database → registers `/pc` and `/prettychat` slash commands
+- `OnEnable()` captures original Blizzard globals into `self.originalStrings`, then calls `ApplyStrings()` which overrides `_G[globalName]` for each enabled category/string and restores originals for disabled ones
+- Config UI (`Config.lua`) is built dynamically from `PrettyChatDefaults` using AceConfig, with one tab per category
 - Uses WoW's `|cAARRGGBB...|r` color escape sequences throughout
 - Format: `Category | Context | Source | +/- value` with each segment color-coded
+
+## Dependencies
+
+Bundled Ace3 libraries (in `Libs/`):
+
+- **LibStub** — library versioning
+- **CallbackHandler-1.0** — event callback system
+- **AceAddon-3.0** — addon lifecycle management
+- **AceDB-3.0** — saved variables / profile database
+- **AceConsole-3.0** — slash command registration
+- **AceGUI-3.0** — GUI widget framework
+- **AceConfig-3.0** — options table → UI generation (AceConfig, AceConfigDialog, AceConfigCmd)
+
+## Configuration System
+
+- **Slash commands**: `/pc`, `/prettychat` — opens the Blizzard settings panel to the PrettyChat page
+- AceConfig options table is built dynamically per category from `PrettyChatDefaults`
+- Each format string is displayed as a **string set** with the following layout:
+  - **Toggle** — per-string enable/disable checkbox (label in gold, GlobalString enum name in white)
+  - **Format input** — editable edit box (escapes `|` → `||` for raw editing; unescapes on save), label in gold
+  - **Preview label** — "Preview" in gold
+  - **Preview input** — disabled edit box showing the current format string value
+  - Separated by spacers and horizontal rules
+- Per-category controls: enable/disable toggle and reset button at the top of each tab
+- Key functions in `PrettyChat.lua`:
+  - `GetStringValue(category, globalName)` — returns user override or default
+  - `IsCategoryEnabled(category)` — returns user override or default enabled state
+  - `IsStringEnabled(category, globalName)` — returns false if string is individually disabled
+  - `ApplyStrings()` — writes enabled strings to `_G`, restores originals for disabled strings
+  - `ResetCategory(category)` — clears saved overrides for one category
+  - `ResetAll()` — clears all saved overrides
+
+## Database Structure
+
+AceDB with default profile (`true` = shared default):
+
+```
+PrettyChatDB.profile.categories[catName].enabled                    -- boolean
+PrettyChatDB.profile.categories[catName].strings[globalName]        -- string override
+PrettyChatDB.profile.categories[catName].disabledStrings[globalName] -- true = disabled
+```
+
+Only user-modified values are stored; `nil` means "use default from `PrettyChatDefaults`". Disabled strings are tracked in `disabledStrings`; absent/nil means enabled.
+
+## Categories
+
+| Category    | Strings | Examples                                       |
+|-------------|---------|------------------------------------------------|
+| Loot        | 19      | `LOOT_ITEM`, `LOOT_ITEM_SELF`, bonus rolls     |
+| Currency    | 4       | `CURRENCY_GAINED`, `CURRENCY_LOST_FROM_DEATH`   |
+| Money       | 7       | `YOU_LOOT_MONEY`, `LOOT_MONEY_SPLIT`            |
+| Reputation  | 14      | `FACTION_STANDING_INCREASED`, standing changes  |
+| Experience  | 20      | `COMBATLOG_XPGAIN_*` (rested, group, raid, etc)|
+| Honor       | 6       | `COMBATLOG_HONORGAIN`, `COMBATLOG_HONORAWARD`   |
+| Tradeskill  | 8       | `CREATED_ITEM`, `OPEN_LOCK_SELF`                |
+| Misc        | 3       | `ERR_QUEST_REWARD_EXP_I`, `ERR_ZONE_EXPLORED_XP`|
 
 ## Color Convention
 
@@ -42,17 +101,17 @@ This is a minimal, single-file addon with no dependencies, no SavedVariables, an
 
 ## Development Notes
 
+- **Version**: `1.1.0`
 - **Interface version**: `120000` (The War Within / Retail). Classic/Classic Era not yet supported.
-- **No build system** - the Lua file is loaded directly by WoW.
-- The frame is named `LootLiteFrame` (appears to be a legacy name from an earlier iteration).
-- There are duplicate assignments for `LOOT_ITEM_PUSHED_SELF` and `LOOT_ITEM_PUSHED_SELF_MULTIPLE` (lines 20-22).
-- `LOOT_ITEM_CREATED_SELF` and `LOOT_ITEM_CREATED_SELF_MULTIPLE` are assigned twice: once under Loot (lines 14-15) and again under Tradeskill (lines 86-87), with the Tradeskill version taking precedence.
+- **No build system** — Lua files are loaded directly by WoW in the order specified in the TOC.
+- `LOOT_ITEM_CREATED_SELF` and `LOOT_ITEM_CREATED_SELF_MULTIPLE` appear in both Loot and Tradeskill categories in `Defaults.lua`. Since `PrettyChatDefaults` is a Lua table, only one category will hold each key — whichever is iterated last by `ApplyStrings()` wins.
 - The TOC title uses rainbow color escapes for display in the addon list.
+- `Settings.OpenToCategory()` requires the category frame's `.name` property (returned by `AceConfigDialog:AddToBlizOptions()`), NOT a plain string name.
 - Bug reports go to: https://github.com/tusharsaxena/prettychat/issues
 
 ## WoW Addon Conventions
 
 - `.toc` files define metadata and file load order
-- Global string overrides must happen after the game loads defaults (hence `PLAYER_ENTERING_WORLD`)
+- Global string overrides must happen after the game loads defaults (hence `OnEnable`)
 - Color codes use `|cAARRGGBB` (AA = alpha, always `ff`) and `|r` to reset
 - Format specifiers (`%s`, `%d`, `%.1f`) must match the original Blizzard string signatures exactly
