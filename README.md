@@ -43,17 +43,15 @@ Please report any issues in the [Issues](https://github.com/tusharsaxena/prettyc
 
 # Changelog
 
-***1.2.0***
-- Per-string enable/disable toggles — selectively override individual format strings
-- Disabled strings now revert to Blizzard defaults instead of staying overridden
-- Improved settings panel layout with spacers and horizontal rules between string sets
-
 ***1.1.0***
 - Added full configuration UI (accessible via `/pc` or `/prettychat`)
 - Per-string customization with live preview
 - Per-category enable/disable toggles
 - Reset to defaults (per-category or all at once)
 - AceDB profile support for saved settings
+- Per-string enable/disable toggles — selectively override individual format strings
+- Disabled strings now revert to Blizzard defaults instead of staying overridden
+- Improved settings panel layout with spacers and horizontal rules between string sets
 
 ***1.0.0***
 - Updated the TOC to 120000
