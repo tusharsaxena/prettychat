@@ -22,7 +22,7 @@ _**With Pretty Chat**_
 
 ### How it works
 
-Pretty Chat does not do any sort of parsing of chat messages, instead it overrides the format of [GlobalConstants.lua](https://www.townlong-yak.com/framexml/live/GlobalStrings.lua) and changes the formatting of those strings. Because of this, it should work out of the box for the default Blizzard interface or any sort of UI package such as ElvUI.
+Pretty Chat does not do any sort of parsing of chat messages, instead it overrides the format of [GlobalStrings.lua](https://www.townlong-yak.com/framexml/live/Helix/GlobalStrings.lua) and changes the formatting of those strings. Because of this, it should work out of the box for the default Blizzard interface or any sort of UI package such as ElvUI.
 
 ### What is not supported ... yet
 
