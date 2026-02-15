@@ -51,6 +51,13 @@ function PrettyChat:IsStringEnabled(category, globalName)
     return true
 end
 
+function PrettyChat:EnsureCategoryDB(category)
+    if not self.db.profile.categories[category] then
+        self.db.profile.categories[category] = {}
+    end
+    return self.db.profile.categories[category]
+end
+
 function PrettyChat:ApplyStrings()
     for category, catData in pairs(PrettyChatDefaults) do
         for globalName in pairs(catData.strings) do

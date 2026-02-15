@@ -74,9 +74,16 @@ Bundled Ace3 libraries (in `Libs/`):
   - `GetStringValue(category, globalName)` — returns user override or default
   - `IsCategoryEnabled(category)` — returns user override or default enabled state
   - `IsStringEnabled(category, globalName)` — returns false if string is individually disabled
+  - `EnsureCategoryDB(category)` — creates `db.profile.categories[category]` if nil, returns it
   - `ApplyStrings()` — writes enabled strings to `_G`, restores originals for disabled strings
   - `ResetCategory(category)` — clears saved overrides for one category
   - `ResetAll()` — clears all saved overrides
+- Config.lua helpers:
+  - Color constants: `GOLD`, `WHITE`, `RESET` — avoid repeated inline color escape strings
+  - `MakeSpacer(order)` — returns a spacer description widget
+  - `MakeLabel(order, text, fontSize)` — returns a label description widget
+  - `MakeDisabledInput(order, getter)` — returns a disabled input widget
+  - `BuildStringEntry(group, globalName, strData, category, i)` — populates all 13 widgets for one string set
 
 ## Database Structure
 
@@ -128,7 +135,7 @@ Only user-modified values are stored; `nil` means "use default from `PrettyChatD
 - **Source file**: `GlobalStrings/GlobalStrings.lua` — the full Blizzard reference (not loaded by any TOC)
 - **Chunk files**: `GlobalStrings/GlobalStrings_001.lua` through `GlobalStrings_010.lua` — populated into `PrettyChatGlobalStrings` table
 - **Splitter script**: `GlobalStrings/split_globalstrings.py` — re-run after updating the source file (e.g., new WoW patch)
-- **Search API**: `GlobalStringSearch.lua` (loaded with main addon) provides `EnsureLoaded()`, `FindByKey(pattern)`, `FindByValue(pattern)`, and `Find(pattern)` methods via `ns.GlobalStringSearch`
+- **Search API**: `GlobalStringSearch.lua` (loaded with main addon) provides `EnsureLoaded()`, `FindByKey(pattern)`, `FindByValue(pattern)`, and `Find(pattern)` methods via `ns.GlobalStringSearch`. Internally uses a shared `Search(predicate, limit)` helper to eliminate duplication
 
 ## Development Notes
 

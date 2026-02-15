@@ -20,23 +20,27 @@ function GlobalStringSearch:EnsureLoaded()
     return true
 end
 
---- Search global string keys matching a pattern (case-insensitive).
--- @param pattern string Lua pattern to match against keys
--- @param limit number Maximum results to return (default 50)
--- @return table Array of {key, value} pairs
-function GlobalStringSearch:FindByKey(pattern, limit)
-    if not self:EnsureLoaded() then return {} end
+local function Search(predicate, limit)
+    if not GlobalStringSearch:EnsureLoaded() then return {} end
     limit = limit or 50
     local results = {}
-    local lowerPattern = pattern:lower()
     for key, value in pairs(PrettyChatGlobalStrings) do
-        if key:lower():find(lowerPattern, 1, true) then
-            results[#results + 1] = {key = key, value = value}
+        if predicate(key, value) then
+            results[#results + 1] = { key = key, value = value }
             if #results >= limit then break end
         end
     end
     table.sort(results, function(a, b) return a.key < b.key end)
     return results
+end
+
+--- Search global string keys matching a pattern (case-insensitive).
+-- @param pattern string Lua pattern to match against keys
+-- @param limit number Maximum results to return (default 50)
+-- @return table Array of {key, value} pairs
+function GlobalStringSearch:FindByKey(pattern, limit)
+    local lp = pattern:lower()
+    return Search(function(k, _) return k:lower():find(lp, 1, true) end, limit)
 end
 
 --- Search global string values matching a pattern (case-insensitive).
@@ -44,18 +48,8 @@ end
 -- @param limit number Maximum results to return (default 50)
 -- @return table Array of {key, value} pairs
 function GlobalStringSearch:FindByValue(pattern, limit)
-    if not self:EnsureLoaded() then return {} end
-    limit = limit or 50
-    local results = {}
-    local lowerPattern = pattern:lower()
-    for key, value in pairs(PrettyChatGlobalStrings) do
-        if value:lower():find(lowerPattern, 1, true) then
-            results[#results + 1] = {key = key, value = value}
-            if #results >= limit then break end
-        end
-    end
-    table.sort(results, function(a, b) return a.key < b.key end)
-    return results
+    local lp = pattern:lower()
+    return Search(function(_, v) return v:lower():find(lp, 1, true) end, limit)
 end
 
 --- Search both keys and values matching a pattern (case-insensitive).
@@ -63,16 +57,8 @@ end
 -- @param limit number Maximum results to return (default 50)
 -- @return table Array of {key, value} pairs
 function GlobalStringSearch:Find(pattern, limit)
-    if not self:EnsureLoaded() then return {} end
-    limit = limit or 50
-    local results = {}
-    local lowerPattern = pattern:lower()
-    for key, value in pairs(PrettyChatGlobalStrings) do
-        if key:lower():find(lowerPattern, 1, true) or value:lower():find(lowerPattern, 1, true) then
-            results[#results + 1] = {key = key, value = value}
-            if #results >= limit then break end
-        end
-    end
-    table.sort(results, function(a, b) return a.key < b.key end)
-    return results
+    local lp = pattern:lower()
+    return Search(function(k, v)
+        return k:lower():find(lp, 1, true) or v:lower():find(lp, 1, true)
+    end, limit)
 end
