@@ -14,6 +14,17 @@ Libs\AceConsole-3.0\AceConsole-3.0.xml
 Libs\AceGUI-3.0\AceGUI-3.0.xml
 Libs\AceConfig-3.0\AceConfig-3.0.xml
 
+GlobalStrings\GlobalStrings_001.lua
+GlobalStrings\GlobalStrings_002.lua
+GlobalStrings\GlobalStrings_003.lua
+GlobalStrings\GlobalStrings_004.lua
+GlobalStrings\GlobalStrings_005.lua
+GlobalStrings\GlobalStrings_006.lua
+GlobalStrings\GlobalStrings_007.lua
+GlobalStrings\GlobalStrings_008.lua
+GlobalStrings\GlobalStrings_009.lua
+GlobalStrings\GlobalStrings_010.lua
+
 Defaults.lua
 PrettyChat.lua
 Config.lua

@@ -57,9 +57,9 @@ local function BuildCategoryGroup(category, catData, order)
         -- Per-string enable toggle
         group.args[globalName .. "_toggle"] = {
             type = "toggle",
-            name = "|cffffd700" .. strData.label .. "|r | |cffffffff" .. globalName .. "|r",
+            name = "Enable",
             order = i + 1,
-            width = "full",
+            width = 0.4,
             disabled = function()
                 return not PrettyChat:IsCategoryEnabled(category)
             end,
@@ -81,11 +81,65 @@ local function BuildCategoryGroup(category, catData, order)
                 PrettyChat:ApplyStrings()
             end,
         }
+        -- Gold label
+        group.args[globalName .. "_toggle_label"] = {
+            type = "description",
+            name = "|cffffd700" .. strData.label .. "|r",
+            order = i + 2,
+            width = 2.0,
+            fontSize = "large",
+        }
+        -- GlobalName label
+        group.args[globalName .. "_toggle_globalname"] = {
+            type = "description",
+            name = "|cffffffff" .. globalName .. "|r",
+            order = i + 3,
+            width = "full",
+            fontSize = "small",
+        }
+        -- Original spacer
+        group.args[globalName .. "_original_spacer"] = {
+            type = "description",
+            name = "\n",
+            order = i + 4,
+            width = "full",
+        }
+        -- Original label
+        group.args[globalName .. "_original_label"] = {
+            type = "description",
+            name = "|cffffd700Original Format String|r",
+            order = i + 5,
+            width = "full",
+            fontSize = "medium",
+        }
+        -- Original value (disabled edit box)
+        group.args[globalName .. "_original"] = {
+            type = "input",
+            name = "",
+            order = i + 6,
+            width = "full",
+            disabled = true,
+            get = function()
+                if PrettyChatGlobalStrings and PrettyChatGlobalStrings[globalName] then
+                    return PrettyChatGlobalStrings[globalName]
+                end
+                return "(original not available)"
+            end,
+            set = function() end,
+        }
+        -- Format label
+        group.args[globalName .. "_format_label"] = {
+            type = "description",
+            name = "|cffffd700New Format String|r",
+            order = i + 7,
+            width = "full",
+            fontSize = "medium",
+        }
         -- Format string input
         group.args[globalName] = {
             type = "input",
-            name = "|cffffd700Format|r",
-            order = i + 2,
+            name = "",
+            order = i + 8,
             width = "full",
             disabled = function()
                 return not PrettyChat:IsCategoryEnabled(category) or not PrettyChat:IsStringEnabled(category, globalName)
@@ -113,7 +167,7 @@ local function BuildCategoryGroup(category, catData, order)
         group.args[globalName .. "_preview_label"] = {
             type = "description",
             name = "|cffffd700Preview|r",
-            order = i + 3,
+            order = i + 9,
             width = "full",
             fontSize = "medium",
         }
@@ -121,7 +175,7 @@ local function BuildCategoryGroup(category, catData, order)
         group.args[globalName .. "_preview"] = {
             type = "input",
             name = "",
-            order = i + 4,
+            order = i + 10,
             width = "full",
             disabled = true,
             get = function()
@@ -133,16 +187,16 @@ local function BuildCategoryGroup(category, catData, order)
         group.args[globalName .. "_spacer_bottom"] = {
             type = "description",
             name = "\n",
-            order = i + 5,
+            order = i + 11,
             width = "full",
         }
         -- Horizontal line
         group.args[globalName .. "_hr"] = {
             type = "header",
             name = "",
-            order = i + 6,
+            order = i + 12,
         }
-        i = i + 7
+        i = i + 13
     end
 
     return group
@@ -187,3 +241,4 @@ end
 
 AceConfig:RegisterOptionsTable("PrettyChat", options)
 PrettyChat.optionsFrame = AceConfigDialog:AddToBlizOptions("PrettyChat", "PrettyChat")
+

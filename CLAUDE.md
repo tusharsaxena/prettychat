@@ -49,12 +49,26 @@ Bundled Ace3 libraries (in `Libs/`):
 
 - **Slash commands**: `/pc`, `/prettychat` — opens the Blizzard settings panel to the PrettyChat page
 - AceConfig options table is built dynamically per category from `PrettyChatDefaults`
-- Each format string is displayed as a **string set** with the following layout:
-  - **Toggle** — per-string enable/disable checkbox (label in gold, GlobalString enum name in white)
-  - **Format input** — editable edit box (escapes `|` → `||` for raw editing; unescapes on save), label in gold
-  - **Preview label** — "Preview" in gold
-  - **Preview input** — disabled edit box showing the current format string value
-  - Separated by spacers and horizontal rules
+- Each format string is displayed as a **string set** with the following layout (13 elements per set, increment = 13):
+
+  | Order | Key Suffix | Type | Width | Font Size | Content |
+  |-------|-----------|------|-------|-----------|---------|
+  | i | `_spacer_top` | description | full | — | `"\n"` spacer |
+  | i+1 | `_toggle` | toggle | 0.4 | — | "Enable" checkbox |
+  | i+2 | `_toggle_label` | description | 2.0 | large | Gold `strData.label` |
+  | i+3 | `_toggle_globalname` | description | full | small | White `globalName` |
+  | i+4 | `_original_spacer` | description | full | — | `"\n"` spacer |
+  | i+5 | `_original_label` | description | full | medium | Gold "Original Format String" |
+  | i+6 | `_original` | input | full | — | Disabled edit box — original Blizzard string |
+  | i+7 | `_format_label` | description | full | medium | Gold "New Format String" |
+  | i+8 | *(globalName)* | input | full | — | Editable format box (escapes `\|` → `\|\|` for raw editing; unescapes on save) |
+  | i+9 | `_preview_label` | description | full | medium | Gold "Preview" |
+  | i+10 | `_preview` | input | full | — | Disabled edit box — rendered preview |
+  | i+11 | `_spacer_bottom` | description | full | — | `"\n"` spacer |
+  | i+12 | `_hr` | header | — | — | Horizontal rule separator |
+
+  - Row 1: `_toggle` (0.4) + `_toggle_label` (2.0) sit on the same line
+  - Row 2: `_toggle_globalname` (full) on its own line
 - Per-category controls: enable/disable toggle and reset button at the top of each tab
 - Key functions in `PrettyChat.lua`:
   - `GetStringValue(category, globalName)` — returns user override or default
