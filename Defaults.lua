@@ -132,6 +132,10 @@ PrettyChatDefaults = {
                 label = "Generic Money Gained",
                 default = "|cffffff00Money|cffffffff | |cffccccccGeneric|cffffffff | |cffffffff+ %s|cffffffff",
             },
+            ERR_QUEST_REWARD_MONEY_S = {
+                label = "Quest Reward Money",
+                default = "|cffffff00Money|cffffffff | |cffccccccQuest Reward|cffffffff | |cffffffff+ %s|cffffffff",
+            },
         },
     },
     Reputation = {
@@ -352,10 +356,6 @@ PrettyChatDefaults = {
             ERR_QUEST_REWARD_EXP_I = {
                 label = "Quest Reward XP",
                 default = "|cffffffffMisc|cffffffff | |cffccccccExp|cffffffff | |cffffffff+ %d|cffffffff",
-            },
-            ERR_QUEST_REWARD_MONEY_S = {
-                label = "Quest Reward Money",
-                default = "|cffffffffMisc|cffffffff | |cffccccccMoney Received|cffffffff | |cffffffff+ %s|cffffffff",
             },
             ERR_ZONE_EXPLORED_XP = {
                 label = "Zone Explored XP",

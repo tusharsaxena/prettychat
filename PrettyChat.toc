@@ -1,5 +1,5 @@
 ## Interface: 120000
-## Title: |cffff0000P|cffff9900r|cffffff00e|cff00ff00t|cff00fffft|cff4a86e8y |cff0000ffC|cff9900ffh|cffff00ffa|cffefefeft|r
+## Title: Ka0s |cffff0000P|cffff9900r|cffffff00e|cff00ff00t|cff00fffft|cff4a86e8y |cff0000ffC|cff9900ffh|cffff00ffa|cffefefeft|r
 ## Version: 1.1.0
 ## Author: aDd1kTeD2Ka0s
 ## Notes: Prettier chat messages
@@ -17,3 +17,4 @@ Libs\AceConfig-3.0\AceConfig-3.0.xml
 Defaults.lua
 PrettyChat.lua
 Config.lua
+GlobalStringSearch.lua

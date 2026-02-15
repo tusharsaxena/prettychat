@@ -31,6 +31,10 @@ Type `/pc` or `/prettychat` in-game to open the settings panel. From there you c
 
 Settings are saved per-character profile via AceDB.
 
+### GlobalStrings Search
+
+Pretty Chat includes a searchable database of all Blizzard GlobalStrings (~22,879 entries), loaded on demand. The `GlobalStrings/` sub-addon splits the data into 10 chunk files for efficient loading. A search API (`GlobalStringSearch.lua`) provides methods to search by key, value, or both — useful for finding format strings to customize.
+
 ### How it works
 
 Pretty Chat does not do any sort of parsing of chat messages, instead it overrides the format of [GlobalStrings.lua](https://www.townlong-yak.com/framexml/live/Helix/GlobalStrings.lua) and changes the formatting of those strings. Because of this, it should work out of the box for the default Blizzard interface or any sort of UI package such as ElvUI.

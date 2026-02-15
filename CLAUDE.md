@@ -7,14 +7,22 @@ PrettyChat is a World of Warcraft addon that reformats chat messages (loot, curr
 ## Project Structure
 
 ```
-PrettyChat.toc      # Addon metadata, file load order, SavedVariables
-PrettyChat.lua      # Core addon (AceAddon, AceDB, AceConsole)
-Config.lua          # AceConfig-based settings UI
-Defaults.lua        # PrettyChatDefaults table (all format strings)
-GlobalStrings.lua   # Bundled Blizzard reference (~1.57 MB)
-README.md           # CurseForge/GitHub description with screenshots
-.gitignore          # OS/editor ignores
-Libs/               # Bundled Ace3 libraries
+PrettyChat.toc          # Addon metadata, file load order, SavedVariables
+PrettyChat.lua          # Core addon (AceAddon, AceDB, AceConsole)
+Config.lua              # AceConfig-based settings UI
+Defaults.lua            # PrettyChatDefaults table (all format strings)
+GlobalStringSearch.lua  # Search API for GlobalStrings data (loaded with main addon)
+README.md               # CurseForge/GitHub description with screenshots
+.gitignore              # OS/editor ignores
+Libs/                   # Bundled Ace3 libraries
+GlobalStrings/          # LoadOnDemand sub-addon with searchable GlobalStrings data
+  GlobalStrings.toc     # Sub-addon TOC (LoadOnDemand: 1)
+  GlobalStrings.lua     # Bundled Blizzard reference (~1.57 MB, source file)
+  GlobalStrings_001.lua # Chunk files (10 total, split by first letter of key)
+  ...
+  GlobalStrings_010.lua
+  split_globalstrings.py  # Python script to regenerate chunk files
+  README.md               # Usage instructions for the splitter script
 ```
 
 ## How It Works
@@ -98,6 +106,15 @@ Only user-modified values are stored; `nil` means "use default from `PrettyChatD
 | `e06666`     | Negative / Refund / Lost     |
 | `cccccc`     | Generic / secondary labels   |
 | `ffffff`     | Default / value text         |
+
+## GlobalStrings Sub-Addon
+
+`GlobalStrings/` is a LoadOnDemand sub-addon containing a searchable copy of Blizzard's `GlobalStrings.lua` (~22,879 entries), split into 10 chunk files by first letter of key.
+
+- **Source file**: `GlobalStrings/GlobalStrings.lua` — the full Blizzard reference (not loaded by any TOC)
+- **Chunk files**: `GlobalStrings/GlobalStrings_001.lua` through `GlobalStrings_010.lua` — populated into `PrettyChatGlobalStrings` table
+- **Splitter script**: `GlobalStrings/split_globalstrings.py` — re-run after updating the source file (e.g., new WoW patch)
+- **Search API**: `GlobalStringSearch.lua` (loaded with main addon) provides `EnsureLoaded()`, `FindByKey(pattern)`, `FindByValue(pattern)`, and `Find(pattern)` methods via `ns.GlobalStringSearch`
 
 ## Development Notes
 
