@@ -43,6 +43,9 @@ Please report any issues in the [Issues](https://github.com/tusharsaxena/prettyc
 
 ## Version History
 
+***1.2.0***
+- TOC version bump
+
 ***1.1.0***
 - Added full configuration UI (accessible via `/pc` or `/prettychat`)
 - Per-string customization with live preview
