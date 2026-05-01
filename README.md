@@ -1,6 +1,11 @@
-![Alt text](https://media.forgecdn.net/attachments/1533/21/prettychat-logo-png.png "Logo")
+# Ka0s Pretty Chat
 
-# Pretty Chat
+![version](https://img.shields.io/badge/version-1.2.0-blue)
+![wow](https://img.shields.io/badge/WoW-Midnight%2012.0.5-orange)
+![license](https://img.shields.io/badge/license-MIT-green)
+
+![Alt text](https://media.forgecdn.net/attachments/1659/647/prettychat-logo-v2-jpg.jpg)
+
 
 **Pretty Chat** is the ultimate World of Warcraft addon designed to transform your in-game chat into a stunning and visually captivating experience. Say goodbye to the bland and mundane chat interface, and say hello to a world of vibrant colors that will take your communication in Azeroth to the next level. Whether you're a role-player seeking immersion or a casual player looking to add a touch of style to your game, this addon will make your chat interface a work of art. Download Pretty Chat today and embark on a journey to make your in-game conversations as visually appealing as the world of Azeroth itself.
 
@@ -26,10 +31,10 @@ _**With Pretty Chat**_
 
 Type `/pc` or `/prettychat` in-game to open the settings panel. From there you can:
 
-- **Enable/disable categories** — Toggle entire groups of format strings (Loot, Currency, Money, Reputation, Experience, Honor, Tradeskill, Misc) on or off.
-- **Enable/disable individual strings** — Each format string has its own toggle, so you can selectively override only the strings you want. Disabled strings revert to Blizzard defaults.
-- **Edit individual strings** — Each format string is shown with raw WoW escape codes so you can tweak colors and labels directly. A preview edit box beneath each input shows the current value.
-- **Reset to defaults** — Reset a single category or all categories back to the built-in PrettyChat formatting at any time.
+*   **Enable/disable categories** — Toggle entire groups of format strings (Loot, Currency, Money, Reputation, Experience, Honor, Tradeskill, Misc) on or off.
+*   **Enable/disable individual strings** — Each format string has its own toggle, so you can selectively override only the strings you want. Disabled strings revert to Blizzard defaults.
+*   **Edit individual strings** — Each format string is shown with raw WoW escape codes so you can tweak colors and labels directly. A preview edit box beneath each input shows the current value.
+*   **Reset to defaults** — Reset a single category or all categories back to the built-in PrettyChat formatting at any time.
 
 Settings are saved per-character profile via AceDB.
 
@@ -43,28 +48,34 @@ Please report any issues in the [Issues](https://github.com/tusharsaxena/prettyc
 
 ## Version History
 
-***1.2.0***
-- TOC version bump
+**_1.2.0_**
 
-***1.1.0***
-- Added full configuration UI (accessible via `/pc` or `/prettychat`)
-- Per-string customization with live preview
-- Per-category enable/disable toggles
-- Reset to defaults (per-category or all at once)
-- AceDB profile support for saved settings
-- Per-string enable/disable toggles — selectively override individual format strings
-- Disabled strings now revert to Blizzard defaults instead of staying overridden
-- Improved settings panel layout with spacers and horizontal rules between string sets
-- String set header row shows Enable checkbox and gold label side-by-side, with GlobalString key name on a separate line below
+*   TOC version bump
 
-***1.0.0***
-- Updated the TOC to 120000
+**_1.1.0_**
 
-***0.0.3***
-- Tagging for initial release
+*   Added full configuration UI (accessible via `/pc` or `/prettychat`)
+*   Per-string customization with live preview
+*   Per-category enable/disable toggles
+*   Reset to defaults (per-category or all at once)
+*   AceDB profile support for saved settings
+*   Per-string enable/disable toggles — selectively override individual format strings
+*   Disabled strings now revert to Blizzard defaults instead of staying overridden
+*   Improved settings panel layout with spacers and horizontal rules between string sets
+*   String set header row shows Enable checkbox and gold label side-by-side, with GlobalString key name on a separate line below
 
-***0.0.2***
-- Some stuff
+**_1.0.0_**
 
-***0.0.1***
-- Initial release. Yay!
+*   Updated the TOC to 120000
+
+**_0.0.3_**
+
+*   Tagging for initial release
+
+**_0.0.2_**
+
+*   Some stuff
+
+**_0.0.1_**
+
+*   Initial release. Yay!
