@@ -27,11 +27,21 @@ GlobalStrings/          # LoadOnDemand sub-addon with searchable GlobalStrings d
 
 ## How It Works
 
-- AceAddon initialization (`OnInitialize`) → creates AceDB database → registers `/pc` and `/prettychat` slash commands
+- AceAddon initialization (`OnInitialize`) → creates AceDB database → registers `/pc` and `/prettychat` slash commands (both routed to `HandleSlashCommand`)
+- `HandleSlashCommand(input)` dispatches: `config` → `OpenConfig()`; anything else (including no args) → `PrintHelp()`
 - `OnEnable()` captures original Blizzard globals into `self.originalStrings`, then calls `ApplyStrings()` which overrides `_G[globalName]` for each enabled category/string and restores originals for disabled ones
 - Config UI (`Config.lua`) is built dynamically from `PrettyChatDefaults` using AceConfig, with one tab per category
 - Uses WoW's `|cAARRGGBB...|r` color escape sequences throughout
 - Format: `Category | Context | Source | +/- value` with each segment color-coded
+
+## Chat Output
+
+All chat output produced by the addon flows through a single shared helper to keep formatting consistent.
+
+- `PrettyChat.lua` captures the addon namespace via `local addonName, ns = ...` and exposes `ns.Print(msg)`.
+- `ns.Print` writes to `DEFAULT_CHAT_FRAME` and prepends a cyan `[PC]` prefix (`|cff00ffff[PC]|r `) — defined as the `PREFIX` local in `PrettyChat.lua`.
+- All addon files (e.g. `GlobalStringSearch.lua`) use `ns.Print` instead of raw `print()` or `self:Print()` so the prefix and color stay uniform.
+- Inside `PrintHelp()`, slash commands are wrapped in yellow (`|cffffff00`) and explanatory notes in white (`|cffffffff`) via small `cmd()`/`note()` local helpers.
 
 ## Dependencies
 
@@ -47,7 +57,10 @@ Bundled Ace3 libraries (in `Libs/`):
 
 ## Configuration System
 
-- **Slash commands**: `/pc`, `/prettychat` — opens the Blizzard settings panel to the PrettyChat page
+- **Slash commands** (both `/pc` and `/prettychat` are aliases of the same handler):
+  - `/pc` (no args) — prints the help text via `ns.Print`
+  - `/pc config` — opens the Blizzard settings panel to the PrettyChat page
+  - any other arg falls through to help
 - AceConfig options table is built dynamically per category from `PrettyChatDefaults`
 - Each format string is displayed as a **string set** with the following layout (13 elements per set, increment = 13):
 
@@ -71,6 +84,9 @@ Bundled Ace3 libraries (in `Libs/`):
   - Row 2: `_toggle_globalname` (full) on its own line
 - Per-category controls: enable/disable toggle and reset button at the top of each tab
 - Key functions in `PrettyChat.lua`:
+  - `ns.Print(msg)` — namespace-level helper that writes to `DEFAULT_CHAT_FRAME` with the cyan `[PC]` prefix; used by every file in the addon
+  - `HandleSlashCommand(input)` — slash dispatcher; routes `config` to `OpenConfig()` and everything else to `PrintHelp()`
+  - `PrintHelp()` — emits the slash-command help via `ns.Print`, with commands in yellow and notes in white
   - `GetStringValue(category, globalName)` — returns user override or default
   - `IsCategoryEnabled(category)` — returns user override or default enabled state
   - `IsStringEnabled(category, globalName)` — returns false if string is individually disabled
@@ -118,7 +134,7 @@ Only user-modified values are stored; `nil` means "use default from `PrettyChatD
 | `ff9900`     | Currency category label      |
 | `ffff00`     | Money category label         |
 | `00ff00`     | Rep category label           |
-| `00ffff`     | XP category label            |
+| `00ffff`     | XP category label; `[PC]` chat-output prefix |
 | `4a86e8`     | Honor category label         |
 | `ff00ff`     | Tradeskill category label    |
 | `93c47d`     | "You" / self-referencing     |
@@ -139,8 +155,8 @@ Only user-modified values are stored; `nil` means "use default from `PrettyChatD
 
 ## Development Notes
 
-- **Version**: `1.1.0`
-- **Interface version**: `120000` (The War Within / Retail). Classic/Classic Era not yet supported.
+- **Version**: `1.2.0`
+- **Interface version**: `120000,120001,120005` (The War Within / Midnight / Retail). Classic/Classic Era not yet supported.
 - **No build system** — Lua files are loaded directly by WoW in the order specified in the TOC.
 - `LOOT_ITEM_CREATED_SELF` and `LOOT_ITEM_CREATED_SELF_MULTIPLE` appear in both Loot and Tradeskill categories in `Defaults.lua`. Since `PrettyChatDefaults` is a Lua table, only one category will hold each key — whichever is iterated last by `ApplyStrings()` wins.
 - The TOC title uses rainbow color escapes for display in the addon list.

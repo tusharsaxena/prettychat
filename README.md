@@ -21,7 +21,7 @@ _**With Pretty Chat**_
 
 ## Features
 
-**Configurable**: Pretty Chat works out of the box with beautiful defaults, and includes a full configuration UI accessible via `/pc` for fine-tuning every format string.
+**Configurable**: Pretty Chat works out of the box with beautiful defaults, and includes a full configuration UI accessible via `/pc config` for fine-tuning every format string.
 
 **Colorful Text**: Express yourself like never before with Pretty Chat's support for colored text and emojis. Add a splash of color to your messages during epic battles or lighthearted role-playing sessions.
 
@@ -29,7 +29,18 @@ _**With Pretty Chat**_
 
 ## Configuration
 
-Type `/pc` or `/prettychat` in-game to open the settings panel. From there you can:
+### Slash commands
+
+`/pc` and `/prettychat` are aliases for the same dispatcher. All chat output from the addon is prefixed with a cyan `[PC]` tag.
+
+| Command | Effect |
+|---------|--------|
+| `/pc` | Show the slash-command help in chat |
+| `/pc config` | Open the settings panel |
+
+### Settings panel
+
+From the settings panel you can:
 
 *   **Enable/disable categories** — Toggle entire groups of format strings (Loot, Currency, Money, Reputation, Experience, Honor, Tradeskill, Misc) on or off.
 *   **Enable/disable individual strings** — Each format string has its own toggle, so you can selectively override only the strings you want. Disabled strings revert to Blizzard defaults.
