@@ -159,7 +159,7 @@ end
 
 local options = {
     type = "group",
-    name = "PrettyChat",
+    name = "Ka0s Pretty Chat",
     args = {
         general = {
             type = "group",
@@ -195,4 +195,4 @@ for category, catData in pairs(PrettyChatDefaults) do
 end
 
 AceConfig:RegisterOptionsTable("PrettyChat", options)
-PrettyChat.optionsFrame = AceConfigDialog:AddToBlizOptions("PrettyChat", "PrettyChat")
+PrettyChat.optionsFrame = AceConfigDialog:AddToBlizOptions("PrettyChat", "Ka0s Pretty Chat")
