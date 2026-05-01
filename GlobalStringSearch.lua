@@ -13,7 +13,7 @@ function GlobalStringSearch:EnsureLoaded()
     end
     local isLoaded, reason = C_AddOns.LoadAddOn("GlobalStrings")
     if not isLoaded then
-        print("|cffff0000PrettyChat:|r Failed to load GlobalStrings data: " .. (reason or "unknown"))
+        ns.Print("|cffff0000Failed to load GlobalStrings data:|r " .. (reason or "unknown"))
         return false
     end
     loaded = true

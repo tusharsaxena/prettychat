@@ -1,4 +1,12 @@
+local addonName, ns = ...
+
 local PrettyChat = LibStub("AceAddon-3.0"):NewAddon("PrettyChat", "AceConsole-3.0")
+
+local PREFIX = "|cff00ffff[PC]|r "
+
+function ns.Print(msg)
+    DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. msg)
+end
 
 local defaults = {
     profile = {
@@ -9,8 +17,25 @@ local defaults = {
 function PrettyChat:OnInitialize()
     self.db = LibStub("AceDB-3.0"):New("PrettyChatDB", defaults, true)
 
-    self:RegisterChatCommand("pc", "OpenConfig")
-    self:RegisterChatCommand("prettychat", "OpenConfig")
+    self:RegisterChatCommand("pc", "HandleSlashCommand")
+    self:RegisterChatCommand("prettychat", "HandleSlashCommand")
+end
+
+function PrettyChat:HandleSlashCommand(input)
+    input = input and input:trim():lower() or ""
+    if input == "config" then
+        self:OpenConfig()
+    else
+        self:PrintHelp()
+    end
+end
+
+function PrettyChat:PrintHelp()
+    local cmd = function(s) return "|cffffff00" .. s .. "|r" end
+    local note = function(s) return "|cffffffff" .. s .. "|r" end
+    ns.Print(note("commands (") .. cmd("/prettychat") .. note(" is an alias of ") .. cmd("/pc") .. note("):"))
+    ns.Print(note("  ") .. cmd("/pc") .. note(" - show this help"))
+    ns.Print(note("  ") .. cmd("/pc config") .. note(" - open the settings panel"))
 end
 
 function PrettyChat:OnEnable()
