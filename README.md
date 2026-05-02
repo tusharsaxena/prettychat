@@ -87,6 +87,8 @@ A few user-facing behaviors worth knowing. Implementation details live in [ARCHI
 
 All bugs, feature requests, and outstanding work are tracked at [https://github.com/tusharsaxena/prettychat/issues](https://github.com/tusharsaxena/prettychat/issues). Please file new reports there rather than as comments — the issue tracker is the single source of truth for the project's backlog.
 
+When reporting a bug, the [smoke-test suite](./docs/smoke-tests.md) is a useful template — it lists which invariant each test guards, so a failure can be tied back to a specific area of the addon.
+
 ## Version History
 
 | Version | Changes |

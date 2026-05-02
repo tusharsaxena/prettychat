@@ -37,4 +37,4 @@ Where each responsibility lives in the source tree. Match this map to the actual
 - `README.md` — user-facing.
 - `CLAUDE.md` — engineer working notes (hard rules + response style + doc index).
 - `ARCHITECTURE.md` — design overview + invariants + doc index.
-- `docs/*.md` — topic chunks (this file is one of them).
+- `docs/*.md` — topic chunks (this file is one of them). Includes [smoke-tests.md](./smoke-tests.md), the manual in-game test suite — there is no automated harness.

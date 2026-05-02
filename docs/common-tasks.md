@@ -92,11 +92,6 @@ When you add or remove a widget, also update the block's `refresh()` closure so 
 
 ## Verify a behavior change in-game
 
-There are no automated tests. Validation is manual:
+See [smoke-tests.md](./smoke-tests.md). The quick recipe at the top handles routine work; the full suite groups (Boot / Override pipeline / Settings panel / Slash / Cross-surface sync / Persistence) catch the rest. If you touched `OnEnable` / `ApplyStrings` / `Schema.lua` / `Config.lua` / slash dispatch, that doc lists which test groups to run.
 
-1. Reload UI (`/reload`) so file-load-time builders re-run.
-2. `/pc test` to dump a synthesized sample of every format string. Output ignores enable toggles, so this works even when the addon is disabled.
-3. Trigger the real chat events (`/use` an item, gain XP, repair money, etc.) and read the actual chat lines.
-4. For panel changes: open `/pc config`, walk to the affected category sub-page, exercise the toggles and edit boxes.
-
-If you can only reason about the change from code and cannot test it in WoW, say so explicitly — don't claim it works.
+If you can only reason about a change from code and cannot test it in WoW, say so explicitly — don't claim it works.

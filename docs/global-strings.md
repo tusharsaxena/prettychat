@@ -59,7 +59,7 @@ The script:
 
 The main `PrettyChat.toc` is **not** updated by the script — its `GlobalStrings\GlobalStrings_001.lua` … `_010.lua` lines are stable as long as the chunk count stays at 10. If the splitter is ever changed to produce a different number of chunks, update both TOCs.
 
-After regenerating, `/reload` in-game and verify the panel's "Original Format String" inputs still resolve for every category. If a Blizzard format-string signature changed (e.g. `%s` → `%2$s`), the corresponding `PrettyChatDefaults` entry in `Defaults.lua` needs updating to match — see [common-tasks.md](./common-tasks.md#fix-a-broken-format-string).
+After regenerating, `/reload` in-game and verify the panel's "Original Format String" inputs still resolve for every category. If a Blizzard format-string signature changed (e.g. `%s` → `%2$s`), the corresponding `PrettyChatDefaults` entry in `Defaults.lua` needs updating to match — see [common-tasks.md](./common-tasks.md#fix-a-broken-format-string). Run the full [smoke-test suite](./smoke-tests.md) — a client patch can shift behavior anywhere in the override pipeline, not just in the keys you re-split.
 
 ## Why split into chunks?
 

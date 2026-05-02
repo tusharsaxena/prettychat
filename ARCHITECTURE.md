@@ -38,6 +38,7 @@ GlobalStrings/   ─▶ PrettyChatGlobalStrings (Blizzard reference, ~22,879 ent
 | Dual-load story (eager + LoD) + splitter script | `GlobalStrings/`, `PrettyChat.toc` | [docs/global-strings.md](./docs/global-strings.md) |
 | Per-file responsibility map | — | [docs/file-index.md](./docs/file-index.md) |
 | Routine recipes (add string, add category, fix a broken format) | — | [docs/common-tasks.md](./docs/common-tasks.md) |
+| Smoke tests (quick recipe + full suite, manual / in-game) | — | [docs/smoke-tests.md](./docs/smoke-tests.md) |
 | In/out scope + resolved decisions | — | [docs/scope.md](./docs/scope.md) |
 
 ## Invariants worth not breaking

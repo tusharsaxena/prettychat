@@ -42,7 +42,7 @@ The addon object itself (`PrettyChat`, an `AceAddon-3.0` object) is **not** publ
 - **Dual-path WSL.** `/home/tushar/GIT/prettychat/` and `/mnt/d/Profile/Users/Tushar/Documents/GIT/prettychat/` are the same repo via symlink. Either path works for git and file tools.
 - **`.gitattributes`** forces CRLF on disk for all text files (overrides per-user `core.autocrlf`).
 - **`.gitignore`** covers OS / editor cruft, `TODO.md`, `.claude/`. `Libs/` is tracked (vendored Ace3, standard WoW addon practice). `GlobalStrings/`, `media/`, all `.lua` source are tracked.
-- **No automated tests.** Validation is manual, in-game. See [docs/common-tasks.md](./docs/common-tasks.md#verify-a-behavior-change-in-game) for the smoke-test recipe.
+- **No automated tests.** Validation is manual, in-game. See [docs/smoke-tests.md](./docs/smoke-tests.md) for the quick recipe (routine work) and the full suite (pre-release / post-patch / post-touch of `OnEnable` / `ApplyStrings` / `Schema.lua` / `Config.lua`).
 
 ## Response style for this repo
 
@@ -67,3 +67,4 @@ Topic-specific detail lives in `docs/`. Read on demand — these are not auto-lo
 | `COMMANDS` table + full command reference + `\|\|` ↔ `\|` chat-input escape | [docs/slash-commands.md](./docs/slash-commands.md) | Adding a slash command; debugging `/pc set` for format strings. |
 | Dual-load story (eager + LoD) + splitter script + when to re-run | [docs/global-strings.md](./docs/global-strings.md) | Patch-day chunk regeneration; touching `GlobalStrings/` or `GlobalStringSearch.lua`. |
 | Recipes (add string, add category, fix a broken format, regenerate chunks) | [docs/common-tasks.md](./docs/common-tasks.md) | Routine modifications. |
+| Quick recipe + full smoke-test suite (Boot / Override / Panel / Slash / Sync / Persistence groups) | [docs/smoke-tests.md](./docs/smoke-tests.md) | Verifying any change in-game; pre-release; post-patch. |
