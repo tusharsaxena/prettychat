@@ -35,8 +35,13 @@ _**With Pretty Chat**_
 
 | Command | Effect |
 |---------|--------|
-| `/pc` | Show the slash-command help in chat |
+| `/pc` / `/pc help` | Show the slash-command help in chat |
 | `/pc config` | Open the settings panel |
+| `/pc list` | List the 8 category toggles. Try `/pc list <Category>` for per-string rows, or `/pc list all` for everything |
+| `/pc get <path>` | Print one setting's current value (e.g. `/pc get Loot.LOOT_ITEM_SELF.enabled`) |
+| `/pc set <path> <value>` | Set one setting (e.g. `/pc set Loot.enabled false`). Bools accept `true/false/on/off/yes/no/1/0` |
+| `/pc reset <Category>` | Reset one category to defaults |
+| `/pc resetall` | Reset every category to defaults |
 
 ### Settings panel
 
@@ -58,6 +63,11 @@ Pretty Chat does not do any sort of parsing of chat messages, instead it overrid
 Please report any issues in the [Issues](https://github.com/tusharsaxena/prettychat/issues) tab, not as a comment!
 
 ## Version History
+
+**_1.4.0_**
+
+*   Schema-driven slash commands: `/pc list`, `/pc get <path>`, `/pc set <path> <value>`, `/pc reset <Category>`, `/pc resetall` — every settings panel toggle and edit box is also addressable from chat by dot path (e.g. `Loot.LOOT_ITEM_SELF.format`)
+*   New shared schema layer wires the settings panel and the slash commands to a single write path, so changes via either surface are reflected immediately by the other
 
 **_1.3.0_**
 

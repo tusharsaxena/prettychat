@@ -8,8 +8,9 @@ PrettyChat is a World of Warcraft addon that reformats chat messages (loot, curr
 
 ```
 PrettyChat.toc          # Addon metadata, file load order, SavedVariables
-PrettyChat.lua          # Core addon (AceAddon, AceDB, AceConsole)
-Config.lua              # AceConfig-based settings UI
+PrettyChat.lua          # Core addon (AceAddon, AceDB, AceConsole) + slash dispatch
+Schema.lua              # Schema layer — flat row list generated from PrettyChatDefaults; shared write path for slash + panel
+Config.lua              # AceConfig-based settings UI (widgets read/write via ns.Schema)
 Defaults.lua            # PrettyChatDefaults table (all format strings)
 GlobalStringSearch.lua  # Search API for GlobalStrings data (loaded with main addon)
 README.md               # CurseForge/GitHub description with screenshots
@@ -27,10 +28,10 @@ GlobalStrings/          # LoadOnDemand sub-addon with searchable GlobalStrings d
 
 ## How It Works
 
-- AceAddon initialization (`OnInitialize`) → creates AceDB database → registers `/pc` and `/prettychat` slash commands (both routed to `HandleSlashCommand`)
-- `HandleSlashCommand(input)` dispatches: `config` → `OpenConfig()`; anything else (including no args) → `PrintHelp()`
+- AceAddon initialization (`OnInitialize`) → creates AceDB database → registers `/pc` and `/prettychat` slash commands (both routed to `OnSlashCommand`)
+- `OnSlashCommand(input)` parses `<command> <rest>`, lowercases the command name, preserves case in `rest` (so dot paths like `Loot.LOOT_ITEM_SELF.format` survive), and dispatches via the ordered `COMMANDS` table at the top of `PrettyChat.lua`
 - `OnEnable()` captures original Blizzard globals into `self.originalStrings`, then calls `ApplyStrings()` which overrides `_G[globalName]` for each enabled category/string and restores originals for disabled ones
-- Config UI (`Config.lua`) is built dynamically from `PrettyChatDefaults` using AceConfig, with one tab per category
+- Settings UI (`Config.lua`) is built dynamically from `PrettyChatDefaults` using AceConfig, with one Blizzard sub-page per category. Widget get/set callbacks delegate to `ns.Schema.Get`/`ns.Schema.Set`, so the panel and the slash UI share a single write path.
 - Uses WoW's `|cAARRGGBB...|r` color escape sequences throughout
 - Format: `Category | Context | Source | +/- value` with each segment color-coded
 
@@ -41,7 +42,7 @@ All chat output produced by the addon flows through a single shared helper to ke
 - `PrettyChat.lua` captures the addon namespace via `local addonName, ns = ...` and exposes `ns.Print(msg)`.
 - `ns.Print` writes to `DEFAULT_CHAT_FRAME` and prepends a cyan `[PC]` prefix (`|cff00ffff[PC]|r `) — defined as the `PREFIX` local in `PrettyChat.lua`.
 - All addon files (e.g. `GlobalStringSearch.lua`) use `ns.Print` instead of raw `print()` or `self:Print()` so the prefix and color stay uniform.
-- Inside `PrintHelp()`, slash commands are wrapped in yellow (`|cffffff00`) and explanatory notes in white (`|cffffffff`) via small `cmd()`/`note()` local helpers.
+- Inside `printHelp()`, slash commands are wrapped in yellow (`|cffffff00`) and explanatory notes in white (`|cffffffff`) via small `cmd()`/`note()` local helpers.
 
 ## Dependencies
 
@@ -55,15 +56,53 @@ Bundled Ace3 libraries (in `Libs/`):
 - **AceGUI-3.0** — GUI widget framework
 - **AceConfig-3.0** — options table → UI generation (AceConfig, AceConfigDialog, AceConfigCmd)
 
+## Schema Layer
+
+`Schema.lua` is the single source of truth for what's settable. At file-load time (after `Defaults.lua` and `PrettyChat.lua`) it iterates `PrettyChatDefaults` and builds a flat array of rows, one per settable value, exposed at `ns.Schema`.
+
+Three row kinds, addressed by dot path:
+
+| Path | Type | Backed by |
+|------|------|-----------|
+| `<Category>.enabled` | bool | `db.profile.categories[Cat].enabled` (via `IsCategoryEnabled` / `EnsureCategoryDB`) |
+| `<Category>.<GLOBALNAME>.enabled` | bool | `db.profile.categories[Cat].disabledStrings[NAME]` (inverted: `disabledStrings[NAME] = true` means disabled) |
+| `<Category>.<GLOBALNAME>.format` | string | `db.profile.categories[Cat].strings[NAME]` (with default fallback) |
+
+Each row carries its own `get()` and `set(value)` closures — PrettyChat's storage layout doesn't map 1:1 to the path structure, so a generic dot-walker (KickCD's `Helpers.Resolve` style) doesn't fit. Closures are simpler than a special-case resolver.
+
+Public API:
+
+- `ns.Schema.AllRows()` — full ordered row list
+- `ns.Schema.RowsByCategory(category)` — filtered subset
+- `ns.Schema.FindByPath(path)` — exact lookup
+- `ns.Schema.Get(path)` / `ns.Schema.Set(path, value)` — read/write through the row's closures
+- `ns.Schema.ResolveCategory(name)` — case-insensitive lookup → canonical PascalCase name
+- `ns.Schema.NotifyPanelChange(category?)` — calls `AceConfigRegistry:NotifyChange("PrettyChat_<Cat>")` so an open AceConfig panel re-renders. Called automatically by `Schema.Set`, `PrettyChat:ResetCategory`, and `PrettyChat:ResetAll`. Pass `nil` to fire for every category.
+- `ns.Schema.CATEGORY_ORDER` — display order (also imported by `Config.lua` so left-rail order and `/pc list` order stay aligned)
+
+`Schema.Set` is the **single write path** shared by every surface that mutates settings. AceConfig widget set-callbacks call it; `/pc set` calls it; both go through the same row's `set()` closure, which writes the DB and runs `PrettyChat:ApplyStrings()`. The panel re-syncs via `NotifyPanelChange`.
+
 ## Configuration System
 
-- **Slash commands** (both `/pc` and `/prettychat` are aliases of the same handler):
-  - `/pc` (no args) — prints the help text via `ns.Print`
-  - `/pc config` — opens the Blizzard settings panel to the PrettyChat parent page
-  - any other arg falls through to help
+- **Slash commands** (both `/pc` and `/prettychat` are aliases of the same handler — `OnSlashCommand`). The KickCD-style ordered `COMMANDS` table at the top of `PrettyChat.lua` drives both the help index and the dispatch table — adding a command means adding one `{name, description, fn(self, rest)}` row.
+
+  | Command | Effect |
+  |---------|--------|
+  | `/pc` (no args) / `/pc help` | Print the help index via `ns.Print` |
+  | `/pc config` | Open the Blizzard settings panel to the parent page |
+  | `/pc list` | List the 8 category toggles (concise default) |
+  | `/pc list <Category>` | List the category toggle + every per-string `.enabled` and `.format` row |
+  | `/pc list all` | Dump every row across every category (long, opt-in) |
+  | `/pc get <path>` | Print one row's current value |
+  | `/pc set <path> <value>` | Write one row. `bool` accepts `true/false/on/off/yes/no/1/0`; `string` consumes the rest of the line literally |
+  | `/pc reset <Category>` | Clear all overrides for one category (case-insensitive name) |
+  | `/pc resetall` | Clear every category's overrides |
+  | unknown command | Print the help index |
+
+  Format-string `set` from chat is a power-user feature — chat input interprets `|c...|r` as inline color escapes, so users must double `||` to send a literal `|`. The settings panel is the recommended editing surface for format strings; `/pc get` output renders with colors applied (no double-escaping at print time).
 - The settings UI uses **one Blizzard sub-page per category** — not tabs. Each category (Loot, Currency, Money, Reputation, Experience, Honor, Tradeskill, Misc) is registered as its own AceConfig options table and added to the Blizzard panel via `AceConfigDialog:AddToBlizOptions(appName, displayName, PARENT_TITLE)`. The third argument nests the entry under the parent in the addon list, so each category renders as a sibling row beneath "Ka0s Pretty Chat" with the full right-pane width to itself (no tab strip).
 - The parent page ("Ka0s Pretty Chat") hosts only a description and the "Reset All to Defaults" button.
-- `CATEGORY_ORDER` (in `Config.lua`) controls the display order of the sub-pages — iterating `pairs(PrettyChatDefaults)` directly would give a non-deterministic order, so the list is explicit.
+- `ns.Schema.CATEGORY_ORDER` (defined in `Schema.lua`, imported by `Config.lua`) controls the display order of the sub-pages and the iteration order in `/pc list` — iterating `pairs(PrettyChatDefaults)` directly would give a non-deterministic order, so the list is explicit.
 - `PrettyChat.subFrames[category]` stores the frame returned by `AddToBlizOptions` for each sub-page (currently unused, available for `/pc config <Category>` direct-jump in future).
 - Each format string is displayed as a **string set** with the following layout (12 elements per set, increment = 12):
 
@@ -92,15 +131,16 @@ Bundled Ace3 libraries (in `Libs/`):
 - Per-category controls: enable/disable toggle and reset button at the top of each sub-page
 - Key functions in `PrettyChat.lua`:
   - `ns.Print(msg)` — namespace-level helper that writes to `DEFAULT_CHAT_FRAME` with the cyan `[PC]` prefix; used by every file in the addon
-  - `HandleSlashCommand(input)` — slash dispatcher; routes `config` to `OpenConfig()` and everything else to `PrintHelp()`
-  - `PrintHelp()` — emits the slash-command help via `ns.Print`, with commands in yellow and notes in white
-  - `GetStringValue(category, globalName)` — returns user override or default
+  - `OnSlashCommand(input)` — slash dispatcher; iterates the local `COMMANDS` table and calls the matching entry's `fn(self, rest)`. Falls back to `printHelp` on empty/unknown.
+  - `printHelp(self)` — emits the slash-command help via `ns.Print`, generated from the `COMMANDS` table so help and dispatch never drift
+  - `listSettings(self, rest)` / `getSetting(self, rest)` / `setSetting(self, rest)` / `runReset(self, rest)` / `runResetAll(self)` — schema-driven slash command bodies. All read/write via `ns.Schema`.
+  - `GetStringValue(category, globalName)` — returns user override or default (read by `ns.Schema` row's `get()`)
   - `IsCategoryEnabled(category)` — returns user override or default enabled state
   - `IsStringEnabled(category, globalName)` — returns false if string is individually disabled
   - `EnsureCategoryDB(category)` — creates `db.profile.categories[category]` if nil, returns it
   - `ApplyStrings()` — writes enabled strings to `_G`, restores originals for disabled strings
-  - `ResetCategory(category)` — clears saved overrides for one category
-  - `ResetAll()` — clears all saved overrides
+  - `ResetCategory(category)` — clears saved overrides for one category, then `NotifyPanelChange(category)`
+  - `ResetAll()` — clears all saved overrides, then `NotifyPanelChange()` (every category)
 - Config.lua helpers:
   - Color constants: `GOLD`, `WHITE`, `RESET` — avoid repeated inline color escape strings
   - `MakeSpacer(order, width?)` — returns a spacer description widget (defaults to full width)
@@ -163,7 +203,7 @@ Only user-modified values are stored; `nil` means "use default from `PrettyChatD
 
 ## Development Notes
 
-- **Version**: `1.3.0`
+- **Version**: `1.4.0`
 - **Interface version**: `120000,120001,120005` (The War Within / Midnight / Retail). Classic/Classic Era not yet supported.
 - **No build system** — Lua files are loaded directly by WoW in the order specified in the TOC.
 - `LOOT_ITEM_CREATED_SELF` and `LOOT_ITEM_CREATED_SELF_MULTIPLE` appear in both Loot and Tradeskill categories in `Defaults.lua`. Since `PrettyChatDefaults` is a Lua table, only one category will hold each key — whichever is iterated last by `ApplyStrings()` wins.

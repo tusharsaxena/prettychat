@@ -1,16 +1,16 @@
+local addonName, ns = ...
+
 local PrettyChat = LibStub("AceAddon-3.0"):GetAddon("PrettyChat")
 local AceConfig = LibStub("AceConfig-3.0")
 local AceConfigDialog = LibStub("AceConfigDialog-3.0")
 
 local PARENT_TITLE = "Ka0s Pretty Chat"
 
--- Display order of the sub-categories in the Blizzard addon list.
--- Iterating PrettyChatDefaults via pairs() would give a non-deterministic
--- order; this keeps the left-rail rows stable across launches.
-local CATEGORY_ORDER = {
-    "Loot", "Currency", "Money", "Reputation",
-    "Experience", "Honor", "Tradeskill", "Misc",
-}
+-- ns.Schema is built by Schema.lua (loaded earlier in the TOC). Its
+-- CATEGORY_ORDER is the single source of truth for left-rail order and
+-- iteration in `/pc list`; reusing it here keeps the panel and slash
+-- UIs from drifting.
+local CATEGORY_ORDER = ns.Schema.CATEGORY_ORDER
 
 local GOLD = "|cffffd700"
 local WHITE = "|cffffffff"
@@ -43,6 +43,12 @@ local function MakeDisabledInput(order, getter, width)
 end
 
 local function BuildStringEntry(group, globalName, strData, category, i)
+    -- Schema paths used by every widget in the entry. Routing all
+    -- get/set through ns.Schema means /pc set ... and the AceConfig
+    -- widgets share a single write path.
+    local enabledPath = category .. "." .. globalName .. ".enabled"
+    local formatPath  = category .. "." .. globalName .. ".format"
+
     group.args[globalName .. "_spacer_top"] = MakeSpacer(i)
 
     group.args[globalName .. "_toggle"] = {
@@ -53,15 +59,8 @@ local function BuildStringEntry(group, globalName, strData, category, i)
         disabled = function()
             return not PrettyChat:IsCategoryEnabled(category)
         end,
-        get = function()
-            return PrettyChat:IsStringEnabled(category, globalName)
-        end,
-        set = function(_, val)
-            local catDB = PrettyChat:EnsureCategoryDB(category)
-            if not catDB.disabledStrings then catDB.disabledStrings = {} end
-            catDB.disabledStrings[globalName] = (not val) or nil
-            PrettyChat:ApplyStrings()
-        end,
+        get = function() return ns.Schema.Get(enabledPath) end,
+        set = function(_, val) ns.Schema.Set(enabledPath, val) end,
     }
 
     group.args[globalName .. "_toggle_label"] = {
@@ -129,27 +128,18 @@ local function BuildStringEntry(group, globalName, strData, category, i)
         disabled = function()
             return not PrettyChat:IsCategoryEnabled(category) or not PrettyChat:IsStringEnabled(category, globalName)
         end,
-        get = function()
-            return PrettyChat:GetStringValue(category, globalName):gsub("|", "||")
-        end,
-        set = function(_, val)
-            val = val:gsub("||", "|")
-            local catDB = PrettyChat:EnsureCategoryDB(category)
-            if not catDB.strings then catDB.strings = {} end
-            if val == PrettyChatDefaults[category].strings[globalName].default then
-                catDB.strings[globalName] = nil
-            else
-                catDB.strings[globalName] = val
-            end
-            PrettyChat:ApplyStrings()
-        end,
+        -- Edit-box `||` ↔ literal `|` escaping happens here at the UI
+        -- boundary. ns.Schema stores raw format strings (single-`|`
+        -- escapes) so /pc get/set see them unmodified.
+        get = function() return ns.Schema.Get(formatPath):gsub("|", "||") end,
+        set = function(_, val) ns.Schema.Set(formatPath, val:gsub("||", "|")) end,
     }
 
     group.args[globalName .. "_preview_label"] =
         MakeLabel(i + 8, GOLD .. "Preview" .. RESET)
 
     group.args[globalName .. "_preview"] = MakeDisabledInput(i + 9, function()
-        return PrettyChat:GetStringValue(category, globalName)
+        return ns.Schema.Get(formatPath)
     end)
 
     group.args[globalName .. "_spacer_bottom"] = MakeSpacer(i + 10)
@@ -176,13 +166,8 @@ local function BuildCategoryOptions(category, catData)
                 desc = "Enable or disable all " .. category .. " string overrides.",
                 order = 1,
                 width = "full",
-                get = function()
-                    return PrettyChat:IsCategoryEnabled(category)
-                end,
-                set = function(_, val)
-                    PrettyChat:EnsureCategoryDB(category).enabled = val
-                    PrettyChat:ApplyStrings()
-                end,
+                get = function() return ns.Schema.Get(category .. ".enabled") end,
+                set = function(_, val) ns.Schema.Set(category .. ".enabled", val) end,
             },
             reset = {
                 type = "execute",
@@ -191,9 +176,7 @@ local function BuildCategoryOptions(category, catData)
                 order = 2,
                 confirm = true,
                 confirmText = "Reset all " .. category .. " strings to defaults?",
-                func = function()
-                    PrettyChat:ResetCategory(category)
-                end,
+                func = function() PrettyChat:ResetCategory(category) end,
             },
             spacer = {
                 type = "description",
