@@ -83,10 +83,6 @@ A few user-facing behaviors worth knowing. Implementation details live in [ARCHI
 | Settings panel won't open from chat | `/pc config` needs the addon fully loaded — try again after the load screen completes. It also refuses during combat (Blizzard's category-switch is protected). If the parent page opens but a sub-category doesn't, click the sub-row in the addon list. |
 | Want a clean slate | One category: `/pc reset <Category>` (e.g. `/pc reset Loot`). Everything including the master toggle: `/pc resetall` (or General → **Reset All to Defaults**). |
 
-## Contributing
-
-Architecture reference for contributors: [ARCHITECTURE.md](ARCHITECTURE.md). Covers the module map, the `GlobalStrings.lua` override pipeline, the schema-driven settings system, the saved-variables shape, and the project's slash-dispatch / AceConfig sub-page / chat-prefix conventions.
-
 ## Issues and feature requests
 
 All bugs, feature requests, and outstanding work are tracked at [https://github.com/tusharsaxena/prettychat/issues](https://github.com/tusharsaxena/prettychat/issues). Please file new reports there rather than as comments — the issue tracker is the single source of truth for the project's backlog.

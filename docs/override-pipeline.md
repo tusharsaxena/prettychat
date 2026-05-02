@@ -106,3 +106,11 @@ Note this is the **PrettyChat default**, not the **Blizzard original**. The Bliz
 - **No event subscriptions.** `OnEnable` snapshots and applies once; `ApplyStrings` re-runs only when settings change. The pipeline is not driven by `CHAT_MSG_*` or any other event.
 - **No per-message inspection.** The addon never sees individual chat lines — they go straight from WoW's chat frame through `string.format(_G[NAME], ...)` to the screen.
 - **No combat guards.** `ApplyStrings` is unprotected; `_G` writes don't taint. The only combat-aware path is `/pc config`, which refuses to open the panel during combat because Blizzard's category-switch is protected.
+
+## Known quirk: globals shared across categories
+
+`LOOT_ITEM_CREATED_SELF` and `LOOT_ITEM_CREATED_SELF_MULTIPLE` are registered under **both** `Loot` and `Tradeskill` in `PrettyChatDefaults` (`Defaults.lua:37` and `Defaults.lua:327`). The schema builds two rows for each — `Loot.LOOT_ITEM_CREATED_SELF.format` and `Tradeskill.LOOT_ITEM_CREATED_SELF.format` — both addressing the same `_G[LOOT_ITEM_CREATED_SELF]`. `ApplyStrings` writes both, so **whichever `pairs()` iterates last wins** — the iteration order over `PrettyChatDefaults` is non-deterministic.
+
+In practice this means: editing the format on one of the two category sub-pages may silently lose to the other on the next `ApplyStrings`. The two defaults *do* differ — Loot uses the red `Loot` label; Tradeskill uses the magenta `Tradeskill` label — so the visible result depends on iteration order at the moment of the last write.
+
+Don't try to "fix" this without a concrete user complaint. The duplicate registration is intentional (both contexts can produce the same Blizzard event), and any deduplication strategy has to pick one category to win, which is itself a policy decision.
