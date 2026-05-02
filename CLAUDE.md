@@ -10,7 +10,7 @@ User-facing reference: [README.md](./README.md). Design overview + invariants: [
 
 ## Hard rules
 
-- **Single write path.** Every settings mutation goes through `ns.Schema.Set(path, value)` — both AceConfig widget set-callbacks (`Config.lua`) and `/pc set` (`PrettyChat.lua`'s `setSetting`). Never write directly to `db.profile.categories[...]` from outside the row's `set()` closure. The single path runs `PrettyChat:ApplyStrings()` and `Schema.NotifyPanelChange()` so panel and slash never drift.
+- **Single write path.** Every settings mutation goes through `ns.Schema.Set(path, value)` — both panel widget callbacks (`Config.lua`) and `/pc set` (`PrettyChat.lua`'s `setSetting`). Never write directly to `db.profile.categories[...]` from outside the row's `set()` closure. The single path runs `PrettyChat:ApplyStrings()` and `Schema.NotifyPanelChange()` so panel and slash never drift.
 - **Master toggle wins.** When `General.enabled` is false, `ApplyStrings` restores every Blizzard original regardless of per-category and per-string state. Three enable layers, evaluated in order: addon → category → per-string. See [docs/override-pipeline.md](./docs/override-pipeline.md).
 - **Format-specifier signatures must match Blizzard's.** Each Blizzard string has a fixed signature (`%s`, `%d`, `%.1f`, `%2$s`, …); replacements must consume the same conversions in the same order, or `string.format` errors at runtime. Copy from the panel's left (Original) edit box.
 - **GlobalString overrides happen in `OnEnable`**, after Blizzard has populated `_G`. The pre-override snapshot in `OnEnable` is the only chance to capture pristine Blizzard values for the runtime "restore on disable" path. Never override `_G[GLOBALNAME]` from anywhere except `ApplyStrings`.
@@ -63,7 +63,7 @@ Topic-specific detail lives in `docs/`. Read on demand — these are not auto-lo
 | Module roles + public APIs (`ns.Schema`, `ns.Print`, `ns.GlobalStringSearch`, `PrettyChat:Test`) | [docs/module-map.md](./docs/module-map.md) | Designing a cross-module change. |
 | Snapshot → ApplyStrings → restore + 3-layer enable order | [docs/override-pipeline.md](./docs/override-pipeline.md) | Touching `OnEnable`, `ApplyStrings`, or any path that mutates `_G[GLOBALNAME]`. |
 | Schema row kinds + single write path + auto-clear + AceDB shape | [docs/schema.md](./docs/schema.md) | Changing how a setting is stored / read / written; adding a new row kind. |
-| Sub-pages + virtual `General` + 12-widget per-string row + Test + color palette | [docs/settings-panel.md](./docs/settings-panel.md) | Touching `Config.lua` or anything that renders in the settings panel. |
+| Canvas-layout framework + unified header + virtual `General` + per-string row + Test + color palette | [docs/settings-panel.md](./docs/settings-panel.md) | Touching `Config.lua`, `Constants.lua`, or anything that renders in the settings panel. |
 | `COMMANDS` table + full command reference + `\|\|` ↔ `\|` chat-input escape | [docs/slash-commands.md](./docs/slash-commands.md) | Adding a slash command; debugging `/pc set` for format strings. |
 | Dual-load story (eager + LoD) + splitter script + when to re-run | [docs/global-strings.md](./docs/global-strings.md) | Patch-day chunk regeneration; touching `GlobalStrings/` or `GlobalStringSearch.lua`. |
 | Recipes (add string, add category, fix a broken format, regenerate chunks) | [docs/common-tasks.md](./docs/common-tasks.md) | Routine modifications. |

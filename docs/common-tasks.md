@@ -84,9 +84,11 @@ The dispatcher and the help printer iterate the same table — no other edits ne
 
 ## Adjust the per-string panel row layout
 
-The 12-widget block lives in `Config.lua`'s `BuildStringEntry`. The widget order is encoded by the `i` / `i + 1` / … offsets — increment is 12, so adding a 13th widget means bumping the loop's `i = i + 12` to `i = i + 13` and adding the new widget at `i + 12`.
+The per-string row lives in `Config.lua`'s `buildStringRow(scroll, category, globalName, strData, refreshers)`. It renders four logical rows in order — header (Enable + label), GLOBALNAME caption, original/new edit boxes (50/50), sample line + Reset button — and attaches a `refresh()` closure to `refreshers` so subsequent DB-mutations (`/pc set`, category toggle, Defaults click) re-sync this row's widgets.
 
-Width semantics gotcha: `width = N` is `N × 170 px` *absolute*; for a percentage of the row use `width = "relative", relWidth = N`. The Original / New side-by-side rows use `relWidth = 0.5`. See [settings-panel.md](./settings-panel.md#the-width-semantics-gotcha).
+Each row is an AceGUI `SimpleGroup` with `Flow` layout; relative widths sum to ≤ 1.0 to fit on one line. Use `:SetRelativeWidth(N)` (fraction of the parent's width). Layout constants live in `ns.Const` (`STRING_VSPACER`, `ROW_VSPACER`); see [settings-panel.md](./settings-panel.md).
+
+When you add or remove a widget, also update the row's `refresh()` closure so the new widget syncs from the DB on every mutation.
 
 ## Verify a behavior change in-game
 

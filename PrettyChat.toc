@@ -28,6 +28,7 @@ GlobalStrings\GlobalStrings_008.lua
 GlobalStrings\GlobalStrings_009.lua
 GlobalStrings\GlobalStrings_010.lua
 
+Constants.lua
 Defaults.lua
 PrettyChat.lua
 Schema.lua

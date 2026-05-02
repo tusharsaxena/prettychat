@@ -10,7 +10,7 @@ Defaults.lua  ──▶ PrettyChatDefaults (categories + format strings)
                     ├──▶ Schema.lua ──▶ ns.Schema   (rows[], byPath[], single write path)
                     │                       │
                     │                       ├──▶ /pc set / get / list / reset    (PrettyChat.lua)
-                    │                       └──▶ AceConfig widget get/set        (Config.lua)
+                    │                       └──▶ Panel widget get/set            (Config.lua)
                     │
                     └──▶ PrettyChat.lua ApplyStrings()
                                 │
@@ -36,7 +36,9 @@ Public surfaces are exposed on `ns`:
 | Member | Set by | Used by |
 |--------|--------|---------|
 | `ns.Print(msg)` | `PrettyChat.lua` | every file (`GlobalStringSearch.lua`, `Schema.lua` indirectly via `PrettyChat.*`, slash command bodies) |
-| `ns.Schema` | `Schema.lua` | `PrettyChat.lua` (slash dispatch), `Config.lua` (every widget get/set) |
+| `ns.Schema` | `Schema.lua` | `PrettyChat.lua` (slash dispatch), `Config.lua` (every widget get/set; also overrides `Schema.NotifyPanelChange` with a refresher dispatch) |
+| `ns.Const` | `Constants.lua` | `Config.lua` (panel padding / header height / spacers) |
+| `ns.RenderSample` | `PrettyChat.lua` | `Config.lua` (per-string sample row) |
 | `ns.GlobalStringSearch` | `GlobalStringSearch.lua` | nobody at runtime today; kept for future debug tooling |
 
 The addon object itself (`PrettyChat`, an `AceAddon-3.0` object) is **not** published on `ns`. Other files reach it via `LibStub("AceAddon-3.0"):GetAddon("PrettyChat")`.
@@ -49,7 +51,7 @@ The addon object itself (`PrettyChat`, an `AceAddon-3.0` object) is **not** publ
 -- Lifecycle
 PrettyChat:OnInitialize()              -- AceDB, slash registration ("/pc" + "/prettychat")
 PrettyChat:OnEnable()                  -- snapshot Blizzard originals → ApplyStrings
-PrettyChat:OpenConfig()                -- Settings.OpenToCategory(self.optionsFrame.name)
+PrettyChat:OpenConfig()                -- Settings.OpenToCategory(self.optionsCategoryID)
 
 -- Override pipeline (also see override-pipeline.md)
 PrettyChat:ApplyStrings()              -- writes enabled overrides to _G; restores originals for disabled ones
@@ -79,7 +81,8 @@ ns.Schema.FindByPath(path)                     -- O(1) lookup by dot path
 ns.Schema.Get(path)                            -- read through the row's get() closure
 ns.Schema.Set(path, value)                     -- write through the row's set() closure → ApplyStrings → NotifyPanelChange
 ns.Schema.ResolveCategory(name)                -- case-insensitive "loot" → "Loot"
-ns.Schema.NotifyPanelChange(category?)         -- AceConfigRegistry:NotifyChange("PrettyChat_<Cat>"); nil → all
+ns.Schema.NotifyPanelChange(category?)         -- dispatches to PrettyChat.subRefreshers[category] (rebound by Config.lua); nil → all
+                                               -- "General" cascades to all sub-pages (per-string disabled state depends on master)
 ns.Schema.CATEGORY_ORDER                       -- canonical display order (also drives /pc list, panel left-rail)
 ```
 
@@ -110,10 +113,11 @@ Returns sorted `{ {key, value}, ... }` arrays. `limit` defaults to 50. **Not con
 
 1. Ace3 libraries — LibStub, CallbackHandler-1.0, AceAddon-3.0, AceDB-3.0, AceConsole-3.0, AceGUI-3.0, AceConfig-3.0.
 2. `GlobalStrings/GlobalStrings_001.lua` … `_010.lua` — populates `PrettyChatGlobalStrings` eagerly so the panel can resolve "Original" values without an explicit load step.
-3. `Defaults.lua` — populates `PrettyChatDefaults`.
-4. `PrettyChat.lua` — creates the AceAddon object, defines `ns.Print`, registers slash commands. **Every later file assumes the addon object exists** (`LibStub("AceAddon-3.0"):GetAddon("PrettyChat")`).
-5. `Schema.lua` — builds `rows` / `byPath` from `PrettyChatDefaults` (which is loaded earlier). Closures bind to live values.
-6. `Config.lua` — registers the parent options table + one sub-page per category. Reads `ns.Schema.CATEGORY_ORDER` to drive iteration.
-7. `GlobalStringSearch.lua` — last; depends on nothing in particular.
+3. `Constants.lua` — populates `ns.Const` with panel layout constants. Side-effect-free.
+4. `Defaults.lua` — populates `PrettyChatDefaults`.
+5. `PrettyChat.lua` — creates the AceAddon object, defines `ns.Print` + `ns.RenderSample`, registers slash commands. **Every later file assumes the addon object exists** (`LibStub("AceAddon-3.0"):GetAddon("PrettyChat")`).
+6. `Schema.lua` — builds `rows` / `byPath` from `PrettyChatDefaults` (which is loaded earlier). Closures bind to live values.
+7. `Config.lua` — registers the parent canvas-layout category + one sub-page per category. Defers AceGUI body rendering until each panel's first `OnShow`. Overrides `ns.Schema.NotifyPanelChange`.
+8. `GlobalStringSearch.lua` — last; depends on nothing in particular.
 
 If you add a new file, put it in the right place in `PrettyChat.toc`.

@@ -1,95 +1,137 @@
 # Settings panel
 
-`Config.lua` builds the AceConfig options tables and registers them with Blizzard's Settings panel. PrettyChat appears under **Ka0s Pretty Chat**; the parent page hosts only a description, and nine sub-pages hold the actionable controls — one per category (`General`, Loot, Currency, Money, Reputation, Experience, Honor, Tradeskill, Misc).
+`Config.lua` builds the settings panel directly on Blizzard's modern `Settings.RegisterCanvasLayoutCategory` / `Settings.RegisterCanvasLayoutSubcategory` API and renders body content with AceGUI. PrettyChat appears under **Ka0s Pretty Chat**; the parent page hosts the logo, tagline, and slash-command list (read-only orientation), and nine sub-pages hold the actionable controls — one per category (`General`, Loot, Currency, Money, Reputation, Experience, Honor, Tradeskill, Misc).
 
-This doc covers: the sub-page registration trick, the virtual `General` page, the per-string row layout, the Test button, and the color palette.
+This doc covers: the canvas-layout framework, the unified per-page header, the virtual `General` sub-page, the per-string row, the Test button, and the color palette.
 
-## Sub-pages instead of right-pane tabs
+## Canvas-layout framework
 
-Each category is registered as its own AceConfig options table (`PrettyChat_<Cat>`) and added to the Blizzard panel via:
+`Config.lua` doesn't go through `AceConfigDialog:AddToBlizOptions` (the older path that auto-renders an AceConfig options table inside the addon's right pane). It builds plain Blizzard `Frame`s for each page, stamps a unified header on each, and uses an AceGUI `ScrollFrame` for the body content. Every category (parent + sub-pages) shares the same header design and right-edge gutter, and the body is laid out the same way on every page.
+
+Registration order from `registerPanels()`:
 
 ```lua
-AceConfigDialog:AddToBlizOptions(appName, displayName, PARENT_TITLE)
+Settings.RegisterCanvasLayoutCategory(parentPanel, "Ka0s Pretty Chat")
+Settings.RegisterAddOnCategory(mainCategory)        -- adds to the addon list
+
+for _, category in ipairs(CATEGORY_ORDER) do
+    Settings.RegisterCanvasLayoutSubcategory(mainCategory, subPanel, category)
+end
 ```
 
-The third argument (`PARENT_TITLE = "Ka0s Pretty Chat"`) nests the entry under the parent in the addon list. Each category renders as a sibling row beneath the parent, gets the full right-pane width to itself, and there's no tab strip in the right pane. The parent page itself hosts only a description — no actionable buttons.
+`PrettyChat.subFrames[category]` stores each subcategory object. `PrettyChat.optionsCategoryID = mainCategory:GetID()` is what `PrettyChat:OpenConfig()` passes to `Settings.OpenToCategory`.
 
-The parent must register *before* the children, because `AddToBlizOptions(_, _, parent)` looks up the parent by display name. That's why `Config.lua` calls `AceConfig:RegisterOptionsTable("PrettyChat", parentOptions)` and `AceConfigDialog:AddToBlizOptions("PrettyChat", PARENT_TITLE)` first, then loops through `CATEGORY_ORDER`.
+Bootstrap waits for `PLAYER_LOGIN`, then calls `registerPanels()`. AceGUI body rendering is **deferred until the panel's first `OnShow`** — at PLAYER_LOGIN the body's frame width is zero, and AceGUI's `List` layout sizes children against the container's current width, so building too early produces a stack of misaligned widgets.
 
-`PrettyChat.subFrames[category]` stores the frame returned by `AddToBlizOptions` for each sub-page. Currently unused at runtime, but available for a future `/pc config <Category>` direct-jump.
+## Unified per-page header
+
+`buildHeader(panel, title, opts)` stamps every page with the same layout:
+
+| Element | How |
+|---------|-----|
+| Title FontString | `GameFontNormalHuge`, anchored TOPLEFT at `(PANEL_PADDING_X, -PANEL_HEADER_TOP)` |
+| Atlas divider | `Options_HorizontalDivider`, full-width minus padding, tinted with `titleFS:GetTextColor()` so future theme retunes follow |
+| Defaults button (optional) | AceGUI `Button`, anchored TOPRIGHT at `(-PANEL_PADDING_X, -PANEL_HEADER_TOP)`, width `PANEL_DEFAULTS_W` |
+
+The parent page renders its title plain (`"Ka0s Pretty Chat"`) via `opts.isMain = true`. Sub-pages prefix the title to read as a breadcrumb: `"Ka0s Pretty Chat  |  Loot"`. The Blizzard left-tree label always stays unprefixed (driven by `panel.name`) so the indented tree doesn't repeat the parent name.
+
+All layout dimensions live in `Constants.lua` (`ns.Const.PANEL_PADDING_X`, `PANEL_HEADER_TOP`, `PANEL_HEADER_HEIGHT`, `PANEL_DEFAULTS_W`, `SECTION_TOP_SPACER`, `SECTION_BOTTOM_SPACER`, `SECTION_HEADING_H`, `ROW_VSPACER`, `STRING_VSPACER`).
+
+## Always-visible scrollbar
+
+`patchAlwaysShowScrollbar(scroll)` rebinds the AceGUI ScrollFrame's `FixScroll` so:
+
+- The scrollbar (and its 20 px right-side gutter) is shown on every page, regardless of overflow. Short pages (General) and long pages (Loot, ~18 strings) line up at the same right edge.
+- When content fits, the thumb parks at the top, the scrollbar greys out, and mousewheel input is inert. When content overflows, the upstream FixScroll logic runs unchanged.
+- On widget release, the original FixScroll / MoveScroll / OnRelease are restored so the AceGUI pool returns clean for any subsequent acquirer.
 
 ## The virtual `General` sub-page
 
-`General` is a *virtual category* — no entry in `PrettyChatDefaults`, no per-string rows. It's built by a dedicated `BuildGeneralOptions()` (separate from the format-string `BuildCategoryOptions` path) and hosts every actionable addon-wide control:
+`General` is a *virtual category* — no entry in `PrettyChatDefaults`, no per-string rows. It's built by `buildGeneralBody(ctx)` and hosts every actionable addon-wide control:
 
 | Control | Wire-up |
 |---------|---------|
-| **Enable PrettyChat** toggle | Bound to the `General.enabled` schema row. Master switch — when off, every Blizzard original is restored. |
-| **Test** button | Calls `PrettyChat:Test()`. Synthesizes a sample chat line from every format string regardless of enable toggles, so the preview works even when the addon is disabled. See below. |
-| **Reset All to Defaults** button | Confirm-popup-gated (`confirm = true`, `confirmText = "Reset ALL PrettyChat strings to defaults?"`). Calls `PrettyChat:ResetAll()`. |
+| Description label | One-line explainer: master toggle behaviour. |
+| **Enable PrettyChat** toggle | Bound to the `General.enabled` schema row. Master switch — when off, every Blizzard original is restored regardless of per-category settings. |
+| **Test** button (50% row) | Calls `PrettyChat:Test()`. Synthesizes a sample chat line from every format string regardless of enable toggles, so the preview works even when the addon is disabled. |
+| **Reset all to defaults** button (50% row) | Opens the `PRETTYCHAT_RESET_ALL` StaticPopup; on confirm, calls `PrettyChat:ResetAll()`. |
 
-Reset All used to live on the parent page and was moved here so every actionable control lives one click in from the addon list.
+The General sub-page does not show a `Defaults` button in the header — the in-body "Reset all to defaults" with its popup confirm is the only addon-wide reset surface, and showing both would be redundant.
 
 ## Per-category sub-pages
 
-Each format-bearing category sub-page is built by `BuildCategoryOptions(category, catData)` and contains:
+`buildCategoryBody(ctx, category, catData)`:
 
-1. An **Enable `<Category>`** toggle at the top, bound to the `<Cat>.enabled` schema row.
-2. A **Reset `<Category>`** button (confirm-popup-gated) that calls `PrettyChat:ResetCategory(category)`.
-3. A spacer.
-4. One 12-widget block per format string in `catData.strings`.
+1. **Enable `<Category>`** checkbox at the top, bound to the `<Cat>.enabled` schema row.
+2. A 2× row spacer.
+3. One per-string row block per format string in `catData.strings`, sorted by global name.
 
-The 12-widget block is the visual unit — see below.
+The header carries a **Defaults** button on the right that calls `PrettyChat:ResetCategory(category)` directly — no popup confirm. Per-row reset is preserved via the per-string `Reset` button (see below), and the master `Reset all to defaults` on General has the popup, so a per-category Defaults click is a single recoverable action.
 
-## Per-string row layout (12 widgets)
+## Per-string row
 
-`BuildStringEntry(group, globalName, strData, category, i)` populates twelve AceConfig args per string (increment = 12, so `i = 10, 22, 34, …`):
+Each format string renders as four logical rows inside the category panel:
 
-| Order | Key suffix | Type | Width | Font | Content |
-|-------|-----------|------|-------|------|---------|
-| i | `_spacer_top` | description | full | — | `"\n"` spacer |
-| i+1 | `_toggle` | toggle | 0.4 | — | "Enable" checkbox |
-| i+2 | `_toggle_label` | description | 2.0 | large | Gold `strData.label` |
-| i+3 | `_toggle_globalname` | description | full | small | White `globalName` |
-| i+4 | `_original_label` | description | relWidth 0.5 | medium | Gold "Original Format String" |
-| i+5 | `_format_label` | description | relWidth 0.5 | medium | Gold "New Format String" |
-| i+6 | `_original` | input | relWidth 0.5 | — | Disabled edit box — Blizzard original from `_G.PrettyChatGlobalStrings[NAME]` |
-| i+7 | *(globalName)* | input | relWidth 0.5 | — | Editable format box (escapes `\|` → `\|\|` for raw editing; unescapes on save) |
-| i+8 | `_preview_label` | description | full | medium | Gold "Preview" |
-| i+9 | `_preview` | input | full | — | Disabled edit box — rendered preview |
-| i+10 | `_spacer_bottom` | description | full | — | `"\n"` spacer |
-| i+11 | `_hr` | header | — | — | Horizontal rule separator |
+| Row | Contents | Layout |
+|-----|----------|--------|
+| 1 | `[Enable]` checkbox + visible label (gold, `GameFontNormal`) | Flow, 25% / 74% |
+| 2 | `GLOBALNAME` caption (grey) | Full width |
+| 3 | Original format (disabled `EditBox`) \| New format (editable `EditBox`) | Flow, 50% / 50% |
+| 4 | Rendered sample (calls `ns.RenderSample`) + `[Reset]` button | Flow, 78% / 20% |
 
-### The width semantics gotcha
+State derived per row in the row's `refresh()` closure (run on first build and on every `Schema.NotifyPanelChange`):
 
-In AceConfig, a numeric `width = N` is `N × 170 px` **absolute**. A *percentage* of the row requires `width = "relative", relWidth = N`. The Original / New side-by-side rows use:
+- `[Enable]` checkbox: `enable:SetValue(strEnabled)` and disabled when master OR category is off.
+- New format `EditBox`: `:SetText` from the schema; disabled when master, category, or per-string is off.
+- Sample Label:
+  - When current value `==` default — render with sample args via `ns.RenderSample`, dim with grey color, hide the Reset button (no diff to revert).
+  - When value `~=` default — render with sample args, no dimming, show the Reset button. On `string.format` error, render the error message in red.
 
-```lua
-width = "relative", relWidth = 0.5
-```
+The new-format `EditBox` commits on `OnEnterPressed` (Enter or focus loss) through `ns.Schema.Set(formatPath, …)` after un-escaping `||` → `|`. The schema runs `PrettyChat:ApplyStrings()` and calls `Schema.NotifyPanelChange(category)`, which dispatches to the category's refresher (see below).
 
-A naive `width = 0.5` would render as `0.5 × 170 = 85 px` absolute, which is roughly half a row at narrow widths and a tiny strip at wide ones — not what you want.
+## Edit-box pipe escaping
 
-### Edit-box pipe escaping
-
-The format input's `get` / `set` wrap the `||` ↔ `|` escaping at the UI boundary so users see double-escaped strings while editing but `ns.Schema` always stores raw single-`|` format strings:
+WoW's chat input interprets `|c…|r` as inline color escapes the moment Enter is pressed, so a raw `|` typed into the edit box would be eaten. The new-format input wraps `|` ↔ `||` at the UI boundary:
 
 ```lua
-get = function() return ns.Schema.Get(formatPath):gsub("|", "||") end,
-set = function(_, val) ns.Schema.Set(formatPath, val:gsub("||", "|")) end,
+:SetText(current:gsub("|", "||"))                         -- on read
+ns.Schema.Set(formatPath, value:gsub("||", "|"))          -- on commit
 ```
 
-This matters because WoW's chat input interprets `|c…|r` as inline color escapes the moment Enter is pressed, so a raw `|` in the edit box would be eaten. The disabled "Original" input does **not** wrap (it's read-only — the user never sends it back through chat input). `/pc set` users have to type `||` themselves; see [slash-commands.md](./slash-commands.md#edit-box-pipe-escaping).
+`ns.Schema` always stores raw single-`|` format strings. The disabled Original input shows the doubled form too (read-only — the user never sends it back through chat input). `/pc set` users have to type `||` themselves; see [slash-commands.md](./slash-commands.md#edit-box-pipe-escaping).
+
+## NotifyPanelChange refresh dispatch
+
+`Config.lua` overrides `ns.Schema.NotifyPanelChange` (originally an AceConfigDialog cache invalidator) with a per-category refresher dispatch:
+
+```lua
+function ns.Schema.NotifyPanelChange(category)
+    if category == "General" or category == nil then
+        for _, fn in pairs(PrettyChat.subRefreshers) do pcall(fn) end
+        return
+    end
+    local fn = PrettyChat.subRefreshers[category]
+    if fn then pcall(fn) end
+end
+```
+
+Each category sub-page's body builder returns a `refresh` closure stored at `PrettyChat.subRefreshers[category]`. A `Schema.Set` from the panel widgets (callback) or the `/pc set` slash both end up calling `Schema.NotifyPanelChange(row.category)` — the closure walks every per-string `refresh` in that category and re-syncs widget values + disabled state from the DB.
+
+Master-toggle (`General.enabled`) changes cascade to every sub-page because per-string disabled state depends on the master.
+
+Programmatic `:SetValue`/`:SetText` on AceGUI widgets do **not** re-fire the user callbacks, so refresh is safe to call from inside a callback chain.
 
 ## The Test preview
 
 Both the General sub-page's "Test" button and the `/pc test` slash command call `PrettyChat:Test()` (in `PrettyChat.lua`). The function:
 
-1. Iterates every format string in every category — **regardless of master / per-category / per-string enable toggles**. That's intentional: the preview is for *seeing what your formats look like*, not for verifying which ones are currently applied to live chat.
-2. For each string, calls `buildSampleArgs(fmt)` — parses `%[flags][width][.precision]type` conversions and produces typed placeholders (`"Sample"` for `%s`, `42` for integer types, `1.5` for floats, `65` for `%c`, `"?"` for unknowns). `%%` escapes are stripped first.
+1. Iterates every format string in every category — **regardless of master / per-category / per-string enable toggles**. The preview is for *seeing what your formats look like*, not for verifying which ones are currently applied to live chat.
+2. For each string, calls the local `buildSampleArgs(fmt)` — parses `%[flags][width][.precision]type` conversions and produces typed placeholders (`"Sample"` for `%s`, `42` for integer types, `1.5` for floats, `65` for `%c`, `"?"` for unknowns). `%%` escapes are stripped first.
 3. `pcall(string.format, fmt, unpack(args))` — a malformed format won't break the loop; it just gets skipped.
 4. Emits each sample line via `DEFAULT_CHAT_FRAME:AddMessage` **without** the `[PC]` prefix, so each rendered preview looks identical to a real loot/currency/XP chat message.
 5. Header and footer carry the `[PC]` prefix, bracketing the test block. Header includes a notice when `IsAddonEnabled()` is false. Footer reports the printed count (`"end of test output (N strings shown)"`).
+
+`ns.RenderSample(fmt)` (also exposed from `PrettyChat.lua`) is the single-string version used by the per-row sample label: returns `(rendered_string)` on success or `(nil, err)` on `string.format` failure.
 
 ## Color palette
 
@@ -110,6 +152,7 @@ The default formats in `Defaults.lua` use this palette. Edit `Defaults.lua` dire
 | `e06666` | Negative / Refund / Lost |
 | `cccccc` | Generic / secondary labels |
 | `ffffff` | Default / value text |
-| `ffd700` | Gold (panel-only — the panel's section labels and the `MakeLabel` helper use this) |
+| `ffd700` | Gold — panel string labels (per-string title) |
+| `aaaaaa` | Grey — panel captions, slash alias note, default-state sample line |
 
 WoW color escapes use `|cAARRGGBB...|r` (AA = alpha, always `ff`). The house style for new defaults is `Category | Context | Source | +/- value`, each segment color-coded.

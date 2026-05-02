@@ -35,7 +35,10 @@ function PrettyChat:OnEnable()
 end
 
 function PrettyChat:OpenConfig()
-    Settings.OpenToCategory(self.optionsFrame.name)
+    if not (Settings and Settings.OpenToCategory) then return end
+    if self.optionsCategoryID then
+        Settings.OpenToCategory(self.optionsCategoryID)
+    end
 end
 
 function PrettyChat:GetStringValue(category, globalName)
@@ -146,6 +149,18 @@ local function buildSampleArgs(fmt)
         args[#args + 1] = sampleArg(ftype)
     end
     return args
+end
+
+-- Render a single format string with synthesized sample args, returning
+-- the rendered line (or nil + error message on string.format failure).
+-- Shared by `PrettyChat:Test()` and the per-string sample row in the
+-- settings panel — keeps both in lockstep on placeholder choices.
+function ns.RenderSample(fmt)
+    if type(fmt) ~= "string" or fmt == "" then return nil, "(empty format)" end
+    local args = buildSampleArgs(fmt)
+    local ok, result = pcall(string.format, fmt, unpack(args))
+    if ok then return result end
+    return nil, result
 end
 
 -- Print one synthesized line per format string the user has configured,

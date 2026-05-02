@@ -26,17 +26,17 @@ function Schema.Set(path, value)
     local row = byPath[path]
     if not row then return false end
     row.set(value)                              -- writes DB + runs PrettyChat:ApplyStrings()
-    Schema.NotifyPanelChange(row.category)      -- AceConfigRegistry:NotifyChange(...)
+    Schema.NotifyPanelChange(row.category)      -- dispatches to the affected sub-page's refresher (Config.lua)
     return true
 end
 ```
 
 Both surfaces go through the same row's `set()`:
 
-- **AceConfig widget set-callbacks** in `Config.lua` call `ns.Schema.Set(path, val)`.
+- **Panel widget callbacks** in `Config.lua` call `ns.Schema.Set(path, val)`.
 - **`/pc set`** (in `PrettyChat.lua`'s `setSetting`) parses the value to the row's declared type, then calls `ns.Schema.Set(path, newVal)`.
 
-After writing, `Set` runs `PrettyChat:ApplyStrings()` (so the live `_G` overrides reconcile — see [override-pipeline.md](./override-pipeline.md)) and calls `Schema.NotifyPanelChange(row.category)` (so an open AceConfig panel re-renders). This keeps the panel and the slash UI from ever drifting — a `/pc set` while the panel is open updates both surfaces in the same frame.
+After writing, `Set` runs `PrettyChat:ApplyStrings()` (so the live `_G` overrides reconcile — see [override-pipeline.md](./override-pipeline.md)) and calls `Schema.NotifyPanelChange(row.category)`. `Config.lua` rebinds `NotifyPanelChange` to dispatch to the affected sub-page's refresher closure (`PrettyChat.subRefreshers[category]`), which re-syncs every visible widget on that page from the DB. Master-toggle changes (category `"General"`) cascade to every sub-page since per-string disabled state depends on the master. This keeps the panel and the slash UI from ever drifting — a `/pc set` while the panel is open updates both surfaces in the same frame.
 
 ### Auto-clear on default
 
@@ -61,7 +61,7 @@ So writing a format back to its default value via `/pc set` or the panel acts as
 | `Schema.FindByPath(path)` | O(1) lookup; returns the row or `nil`. |
 | `Schema.Get(path)` / `Schema.Set(path, value)` | Read/write through the row's closures. `Set` returns `false` if the path is unknown. |
 | `Schema.ResolveCategory(name)` | Case-insensitive PascalCase resolver — `/pc reset loot` finds `Loot`. Returns `nil` for unknowns. |
-| `Schema.NotifyPanelChange(category?)` | Calls `AceConfigRegistry:NotifyChange("PrettyChat_<Cat>")`. Pass `nil` to fire for every category. Safe to call before AceConfigRegistry is loaded — no-op. |
+| `Schema.NotifyPanelChange(category?)` | Dispatches to `PrettyChat.subRefreshers[category]` (rebound by `Config.lua`). Pass `nil` to refresh every sub-page. Master-toggle changes (`"General"`) also cascade to every sub-page. Safe to call before `Config.lua` has installed the override — the original Schema.lua implementation no-ops gracefully. |
 | `Schema.CATEGORY_ORDER` | Display order array. Imported by `Config.lua` (left-rail order), `PrettyChat.lua`'s `Test()` and `/pc list` (iteration order). The single source of truth — iterating `pairs(PrettyChatDefaults)` would give a non-deterministic order. |
 
 ## Reset semantics
@@ -73,7 +73,7 @@ Two reset paths, both routed through `PrettyChat:Reset*` not directly through Sc
 
 Both are reachable from:
 
-- The panel's per-category Reset button and the General sub-page's Reset All to Defaults button (both gated by AceConfig `confirm = true` popups).
+- The panel's per-category `Defaults` button (in the page header — no popup confirm) and the General sub-page's "Reset all to defaults" button (gated by the `PRETTYCHAT_RESET_ALL` StaticPopup).
 - `/pc reset <Category>` and `/pc resetall` (no in-chat confirmation — typing the command is itself the assertion).
 
 ## SavedVariables shape

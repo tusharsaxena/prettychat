@@ -14,7 +14,7 @@ Defaults.lua  ─▶ PrettyChatDefaults (categories + format strings + per-cat e
                     ├─▶ Schema.lua   ─▶ ns.Schema   (rows[], byPath[], single write path)
                     │                       │
                     │                       ├─▶ /pc set / get / list / reset    (PrettyChat.lua)
-                    │                       └─▶ AceConfig widget get/set        (Config.lua)
+                    │                       └─▶ Panel widget get/set            (Config.lua)
                     │
                     └─▶ PrettyChat.lua ApplyStrings()
                                 │
@@ -33,7 +33,7 @@ GlobalStrings/   ─▶ PrettyChatGlobalStrings (Blizzard reference, ~22,879 ent
 | Per-module APIs + roles | `PrettyChat.lua`, `Schema.lua`, `Config.lua`, `Defaults.lua`, `GlobalStringSearch.lua` | [docs/module-map.md](./docs/module-map.md) |
 | Snapshot → ApplyStrings → restore; 3-layer enable order | `PrettyChat.lua` (`OnEnable`, `ApplyStrings`) | [docs/override-pipeline.md](./docs/override-pipeline.md) |
 | Schema row kinds + single write path + auto-clear + AceDB shape | `Schema.lua` (`Schema.Set`, row closures) | [docs/schema.md](./docs/schema.md) |
-| Sub-pages + virtual `General` + 12-widget row + Test + color palette | `Config.lua` | [docs/settings-panel.md](./docs/settings-panel.md) |
+| Canvas-layout framework + unified header + virtual `General` + per-string row + Test + color palette | `Config.lua`, `Constants.lua` | [docs/settings-panel.md](./docs/settings-panel.md) |
 | `COMMANDS` table + full command reference + `\|\|` ↔ `\|` escape | `PrettyChat.lua` (`COMMANDS`, `OnSlashCommand`) | [docs/slash-commands.md](./docs/slash-commands.md) |
 | Dual-load story (eager + LoD) + splitter script | `GlobalStrings/`, `PrettyChat.toc` | [docs/global-strings.md](./docs/global-strings.md) |
 | Per-file responsibility map | — | [docs/file-index.md](./docs/file-index.md) |
@@ -42,11 +42,11 @@ GlobalStrings/   ─▶ PrettyChatGlobalStrings (Blizzard reference, ~22,879 ent
 
 ## Invariants worth not breaking
 
-- **Single write path.** `ns.Schema.Set(path, value)` is the only function that mutates settings. Both `/pc set` and AceConfig widget set-callbacks go through it; the row's `set()` writes the DB *and* runs `PrettyChat:ApplyStrings()` *and* `Schema.NotifyPanelChange()`. Direct writes to `db.profile.categories[...]` from outside Schema are forbidden.
+- **Single write path.** `ns.Schema.Set(path, value)` is the only function that mutates settings. Both `/pc set` and panel widget callbacks go through it; the row's `set()` writes the DB *and* runs `PrettyChat:ApplyStrings()` *and* `Schema.NotifyPanelChange()`. Direct writes to `db.profile.categories[...]` from outside Schema are forbidden.
 - **Master toggle wins.** When `db.profile.enabled` is false, `ApplyStrings` restores every Blizzard original regardless of per-category and per-string state. Three enable layers, evaluated in order: addon → category → per-string. A string only renders with the user's format if all three are on.
 - **`OnEnable` snapshots Blizzard originals before any override.** This is the only chance to capture pristine values for the runtime "restore on disable" path — the snapshot only covers strings mentioned in `PrettyChatDefaults` (~81 entries). Adding a new `globalName` requires a `/reload` for the snapshot to pick it up.
 - **Format-specifier signatures must match Blizzard's.** Each Blizzard string has a fixed signature (`%s`, `%d`, `%.1f`, `%2$s`, …); replacements must consume the same conversions in the same order or `string.format` errors at runtime. Copy from the panel's left (Original) edit box.
-- **`General` is a virtual category.** No entry in `PrettyChatDefaults`; built by a dedicated `BuildGeneralOptions()` in `Config.lua` and stored as `db.profile.enabled` at the profile root (not under `db.profile.categories`). It owns the addon-wide toggle, Test, and Reset All.
+- **`General` is a virtual category.** No entry in `PrettyChatDefaults`; built by a dedicated `buildGeneralBody()` in `Config.lua` and stored as `db.profile.enabled` at the profile root (not under `db.profile.categories`). It owns the addon-wide toggle, Test, and Reset all to defaults.
 - **Auto-clear on default match.** For `string_format` rows, writing a value that equals the PrettyChat default clears the override entry instead of storing it. `db.profile.categories[Cat].strings` never collects "override that happens to equal the default".
 - **`CATEGORY_ORDER` is the single source of truth for display order.** Lives in `Schema.lua`; imported by `Config.lua` (left-rail order) and `PrettyChat.lua` (`Test()` and `/pc list` iteration). Iterating `pairs(PrettyChatDefaults)` directly would give a non-deterministic order.
 - **Cyan `[PC]` chat prefix on all addon output.** Routes through `ns.Print(msg)`. The one intentional exception is `Test()`'s sample lines themselves — emitted unprefixed so each preview looks like a real chat message. No raw `print(...)` calls anywhere.
@@ -62,7 +62,7 @@ All vendored under `Libs/`:
 - AceDB-3.0
 - AceConsole-3.0
 - AceGUI-3.0
-- AceConfig-3.0 (pulls in AceConfigRegistry / AceConfigCmd / AceConfigDialog)
+- AceConfig-3.0 (vendored; not currently used at runtime — kept for future re-wiring without a TOC change)
 
 `PrettyChat.toc`'s `## Interface:` line is `120000, 120001, 120005` (The War Within / Midnight / Retail). Classic / Classic Era are not yet supported.
 
@@ -72,10 +72,11 @@ All vendored under `Libs/`:
 
 1. Ace3 libraries — LibStub → CallbackHandler-1.0 → AceAddon-3.0 → AceDB-3.0 → AceConsole-3.0 → AceGUI-3.0 → AceConfig-3.0.
 2. `GlobalStrings/GlobalStrings_001.lua` … `_010.lua` — populates `PrettyChatGlobalStrings` eagerly so the panel can resolve "Original" values without an explicit load step. See [docs/global-strings.md](./docs/global-strings.md) for why this is also packaged as a LoadOnDemand sub-addon.
-3. `Defaults.lua` — populates `PrettyChatDefaults`.
-4. `PrettyChat.lua` — creates the AceAddon object, defines `ns.Print`, registers slash commands. **Every later file assumes the addon object exists** (`LibStub("AceAddon-3.0"):GetAddon("PrettyChat")`).
-5. `Schema.lua` — builds `rows` / `byPath` from `PrettyChatDefaults`. Closures bind to live values.
-6. `Config.lua` — registers the parent options table + one sub-page per category (driven by `ns.Schema.CATEGORY_ORDER`).
-7. `GlobalStringSearch.lua`.
+3. `Constants.lua` — populates `ns.Const` with panel layout constants (padding, header height, spacers). Side-effect-free; loads early so any later file can read `ns.Const.*` without an existence check.
+4. `Defaults.lua` — populates `PrettyChatDefaults`.
+5. `PrettyChat.lua` — creates the AceAddon object, defines `ns.Print` + `ns.RenderSample`, registers slash commands. **Every later file assumes the addon object exists** (`LibStub("AceAddon-3.0"):GetAddon("PrettyChat")`).
+6. `Schema.lua` — builds `rows` / `byPath` from `PrettyChatDefaults`. Closures bind to live values.
+7. `Config.lua` — registers the parent canvas-layout category + one sub-page per category (driven by `ns.Schema.CATEGORY_ORDER`). Defers AceGUI body rendering until each panel's first `OnShow`.
+8. `GlobalStringSearch.lua`.
 
 If you add a new file, put it in the right place in `PrettyChat.toc`.

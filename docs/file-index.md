@@ -9,7 +9,8 @@ Where each responsibility lives in the source tree. Match this map to the actual
 | `PrettyChat.lua` | AceAddon entry. `OnInitialize` (DB + slash registration), `OnEnable` (snapshot Blizzard originals → `ApplyStrings`). Houses `ApplyStrings`, `Test`, the read helpers (`GetStringValue` / `IsAddonEnabled` / `IsCategoryEnabled` / `IsStringEnabled` / `EnsureCategoryDB`), `ResetCategory` / `ResetAll`, the ordered `COMMANDS` table that drives slash dispatch and `/pc help`, and the file-local `ns.Print` helper used by every other file. |
 | `Defaults.lua` | The `PrettyChatDefaults` global — canonical per-category format strings, labels, and per-category `enabled` flag. Single source of truth for what categories and strings exist. Eight categories with 81 format strings total (Loot 19, Currency 4, Money 8, Reputation 14, Experience 20, Honor 6, Tradeskill 8, Misc 2). |
 | `Schema.lua` | Builds a flat `rows` array and `byPath` lookup from `PrettyChatDefaults` at file-load. Exposes `ns.Schema` — the **single write path** shared by slash commands and panel widgets. Owns `CATEGORY_ORDER` (the canonical display order, including the virtual `General`). See [schema.md](./schema.md). |
-| `Config.lua` | AceConfig options tables registered as Blizzard sub-pages (one per category). `BuildGeneralOptions` builds the virtual `General` page; `BuildCategoryOptions` + `BuildStringEntry` build each format-bearing page. All widget get/set callbacks delegate to `ns.Schema`. See [settings-panel.md](./settings-panel.md). |
+| `Constants.lua` | Layout constants on `ns.Const` (panel padding / header height / Defaults-button width / spacers). Side-effect-free; loads early so `Config.lua` can read `ns.Const.*` without an existence check. |
+| `Config.lua` | Settings panel built directly on `Settings.RegisterCanvasLayoutCategory` / `RegisterCanvasLayoutSubcategory` with AceGUI body content. `buildGeneralBody` builds the virtual `General` page; `buildCategoryBody` + `buildStringRow` build each format-bearing page; `buildParentBody` renders the parent landing page. Overrides `ns.Schema.NotifyPanelChange` with a refresher dispatch. All widget callbacks delegate to `ns.Schema.Set/Get`. See [settings-panel.md](./settings-panel.md). |
 | `GlobalStringSearch.lua` | Public search API over the `PrettyChatGlobalStrings` global (`EnsureLoaded` / `FindByKey` / `FindByValue` / `Find`). Loaded with the main addon. **Not currently consumed at runtime** — `Config.lua` reads `_G.PrettyChatGlobalStrings` directly for the panel's "Original" disabled input. Kept for future debug tooling. |
 
 ## GlobalStrings sub-tree
@@ -24,7 +25,7 @@ Where each responsibility lives in the source tree. Match this map to the actual
 
 ## Shared infrastructure
 
-- `PrettyChat.toc` — Interface line (`120000, 120001, 120005`), version, SavedVariables (`PrettyChatDB`), and file load order. Order is dependency order, not alphabetical: Libs → GlobalStrings chunks → `Defaults.lua` → `PrettyChat.lua` → `Schema.lua` → `Config.lua` → `GlobalStringSearch.lua`.
+- `PrettyChat.toc` — Interface line (`120000, 120001, 120005`), version, SavedVariables (`PrettyChatDB`), and file load order. Order is dependency order, not alphabetical: Libs → GlobalStrings chunks → `Constants.lua` → `Defaults.lua` → `PrettyChat.lua` → `Schema.lua` → `Config.lua` → `GlobalStringSearch.lua`.
 - `Libs/` — vendored Ace3 + LibStub. Tracked in git (standard WoW addon practice).
 - `media/` — local copies of the logo + before/after screenshots. The README references CDN URLs, not these — they're kept around as source backups.
 - `.gitattributes` — forces CRLF on disk for all text files (overrides per-user `core.autocrlf`).
