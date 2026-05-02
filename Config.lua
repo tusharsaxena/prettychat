@@ -241,22 +241,104 @@ local function BuildCategoryOptions(category, catData)
     return group
 end
 
--- Parent page — description only. The Reset All button used to live
--- here; it now lives on the General sub-page alongside the master
--- Enable toggle and Test button, so every actionable control is
--- reachable from one expanded entry in the addon list.
-local parentOptions = {
-    type = "group",
-    name = PARENT_TITLE,
-    args = {
-        description = {
+-- Parent page — landing page for the addon. Renders title (from TOC
+-- Title, color-coded), logo, the TOC Notes one-liner, and the slash
+-- command list (sourced from ns.COMMANDS so panel and `/pc help` share
+-- a single table). All actionable controls live on the General
+-- sub-page; this page is read-only orientation.
+--
+-- Vertical scrollbar: AceConfigDialog auto-wraps any root group with no
+-- non-inline child groups in a ScrollFrame (AceConfigDialog-3.0.lua:1638).
+-- Our parent panel has zero nested groups (sub-pages are sibling
+-- registrations, not children of `args`), so the scrollbar is added
+-- automatically and shows whenever content overflows.
+local TOC_TITLE = (C_AddOns and C_AddOns.GetAddOnMetadata
+                   and C_AddOns.GetAddOnMetadata(addonName, "Title")) or PARENT_TITLE
+local TOC_NOTES = (C_AddOns and C_AddOns.GetAddOnMetadata
+                   and C_AddOns.GetAddOnMetadata(addonName, "Notes")) or ""
+
+local LOGO_PATH = "Interface\\AddOns\\" .. addonName
+                  .. "\\media\\screenshots\\prettychat.logo.v2.tga"
+
+-- AceGUI's Label widget (the backing for `type = "description"`) centers an
+-- image-only row whenever the label text is empty OR the widget has < 200px
+-- of room beside the image (see AceGUIWidget-Label.lua:32). To keep the
+-- logo at native 300×300 AND visually left-aligned we have to defeat both
+-- conditions:
+--   (a) non-empty label — a single space works without showing anything;
+--   (b) frame width ≥ imageWidth + 200 — the panel's right pane is only
+--       ~480–525 px wide, so we set `width = 3.0` (= 3 × 170 px = 510 px,
+--       AceConfig's numeric-width multiplier) so 510 − 300 = 210 ≥ 200.
+--       The image renders at TOPLEFT (visible); the trailing space lands
+--       past the panel edge and is invisible.
+local LOGO_DISPLAY_SIZE = 300
+local LOGO_WIDGET_WIDTH = 3.0
+
+local function BuildParentOptions()
+    local args = {
+        title = {
             type = "description",
-            name = "PrettyChat reformats chat messages with color-coded, pipe-delimited formatting.\n\nSelect a category from the addon list to view and customize individual format strings. Each string uses WoW color escapes (|cAARRGGBB...|r) and format specifiers (%s, %d, %.1f) that must match Blizzard's originals.\n",
+            name = TOC_TITLE,
             order = 1,
-            fontSize = "medium",
+            fontSize = "large",
+            width = "full",
         },
-    },
-}
+        title_sep = {
+            type = "header",
+            name = "",
+            order = 2,
+        },
+        logo = {
+            type = "description",
+            name = " ",
+            image = LOGO_PATH,
+            imageWidth = LOGO_DISPLAY_SIZE,
+            imageHeight = LOGO_DISPLAY_SIZE,
+            order = 3,
+            width = LOGO_WIDGET_WIDTH,
+        },
+        notes = {
+            type = "description",
+            name = WHITE .. TOC_NOTES .. RESET,
+            order = 4,
+            fontSize = "medium",
+            width = "full",
+        },
+        slash_sep = {
+            type = "header",
+            name = "Slash Commands",
+            order = 5,
+        },
+        slash_alias = {
+            type = "description",
+            name = WHITE .. "/prettychat is an alias for /pc" .. RESET,
+            order = 6,
+            fontSize = "small",
+            width = "full",
+        },
+    }
+
+    local i = 10
+    for _, entry in ipairs(ns.COMMANDS or {}) do
+        args["cmd_" .. entry[1]] = {
+            type = "description",
+            name = GOLD .. "/pc " .. entry[1] .. RESET
+                   .. WHITE .. " — " .. entry[2] .. RESET,
+            order = i,
+            fontSize = "medium",
+            width = "full",
+        }
+        i = i + 1
+    end
+
+    return {
+        type = "group",
+        name = PARENT_TITLE,
+        args = args,
+    }
+end
+
+local parentOptions = BuildParentOptions()
 
 AceConfig:RegisterOptionsTable("PrettyChat", parentOptions)
 PrettyChat.optionsFrame = AceConfigDialog:AddToBlizOptions("PrettyChat", PARENT_TITLE)

@@ -247,6 +247,11 @@ local COMMANDS = {
         function(self) self:Test() end},
 }
 
+-- Published so Config.lua's parent panel can render the slash-command list
+-- from the same source the /pc help dispatcher uses, keeping the two surfaces
+-- from drifting.
+ns.COMMANDS = COMMANDS
+
 function printHelp(self)
     ns.Print(note("v" .. VERSION .. " — slash commands (")
              .. cmd("/prettychat") .. note(" is an alias for ")
