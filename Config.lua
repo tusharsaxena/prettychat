@@ -151,6 +151,51 @@ local function BuildStringEntry(group, globalName, strData, category, i)
     }
 end
 
+-- General sub-page — addon-wide controls that don't belong to any one
+-- format-string category. Hosts the master Enable toggle (driven by the
+-- General.enabled schema row), a Test button (synthesizes sample output
+-- from every active format string), and the Reset All to Defaults
+-- button (moved here from the parent page).
+local function BuildGeneralOptions()
+    return {
+        type = "group",
+        name = "General",
+        args = {
+            description = {
+                type = "description",
+                name = "Addon-wide controls. The Enable toggle is the master switch — disable it and every Blizzard original is restored regardless of per-category settings.\n",
+                order = 1,
+                fontSize = "medium",
+            },
+            enabled = {
+                type = "toggle",
+                name = "Enable PrettyChat",
+                desc = "Master switch for the addon. When off, all Blizzard originals are restored.",
+                order = 2,
+                width = "full",
+                get = function() return ns.Schema.Get("General.enabled") end,
+                set = function(_, val) ns.Schema.Set("General.enabled", val) end,
+            },
+            test = {
+                type = "execute",
+                name = "Test",
+                desc = "Print a sample of every active format string to chat so you can see what real loot/currency/XP messages will look like.",
+                order = 3,
+                func = function() PrettyChat:Test() end,
+            },
+            resetAll = {
+                type = "execute",
+                name = "Reset All to Defaults",
+                desc = "Reset all categories and strings to their default values.",
+                order = 4,
+                confirm = true,
+                confirmText = "Reset ALL PrettyChat strings to defaults?",
+                func = function() PrettyChat:ResetAll() end,
+            },
+        },
+    }
+end
+
 -- Returns the root options table for one category's sub-page. Each
 -- sub-page is registered separately with AceConfig and added to the
 -- Blizzard panel as a child of PARENT_TITLE, which renders it as its
@@ -196,9 +241,10 @@ local function BuildCategoryOptions(category, catData)
     return group
 end
 
--- Parent page — description + Reset All button only. The previous
--- nested args[category] groups (which AceConfig rendered as tabs) are
--- gone; categories now live as sibling sub-pages registered below.
+-- Parent page — description only. The Reset All button used to live
+-- here; it now lives on the General sub-page alongside the master
+-- Enable toggle and Test button, so every actionable control is
+-- reachable from one expanded entry in the addon list.
 local parentOptions = {
     type = "group",
     name = PARENT_TITLE,
@@ -209,17 +255,6 @@ local parentOptions = {
             order = 1,
             fontSize = "medium",
         },
-        resetAll = {
-            type = "execute",
-            name = "Reset All to Defaults",
-            desc = "Reset all categories and strings to their default values.",
-            order = 2,
-            confirm = true,
-            confirmText = "Reset ALL PrettyChat strings to defaults?",
-            func = function()
-                PrettyChat:ResetAll()
-            end,
-        },
     },
 }
 
@@ -229,13 +264,21 @@ PrettyChat.optionsFrame = AceConfigDialog:AddToBlizOptions("PrettyChat", PARENT_
 -- Register each category as its own Blizzard sub-page. The third arg
 -- (parent) must match a previously-registered category's display name —
 -- here, PARENT_TITLE — so the parent registration above must run first.
+-- "General" is a virtual category (no entry in PrettyChatDefaults), so
+-- it takes the dedicated BuildGeneralOptions path.
 PrettyChat.subFrames = {}
 for _, category in ipairs(CATEGORY_ORDER) do
-    local catData = PrettyChatDefaults[category]
-    if catData then
-        local appName = "PrettyChat_" .. category
-        AceConfig:RegisterOptionsTable(appName, BuildCategoryOptions(category, catData))
+    local appName = "PrettyChat_" .. category
+    if category == "General" then
+        AceConfig:RegisterOptionsTable(appName, BuildGeneralOptions())
         PrettyChat.subFrames[category] =
             AceConfigDialog:AddToBlizOptions(appName, category, PARENT_TITLE)
+    else
+        local catData = PrettyChatDefaults[category]
+        if catData then
+            AceConfig:RegisterOptionsTable(appName, BuildCategoryOptions(category, catData))
+            PrettyChat.subFrames[category] =
+                AceConfigDialog:AddToBlizOptions(appName, category, PARENT_TITLE)
+        end
     end
 end

@@ -37,11 +37,12 @@ _**With Pretty Chat**_
 |---------|--------|
 | `/pc` / `/pc help` | Show the slash-command help in chat |
 | `/pc config` | Open the settings panel |
-| `/pc list` | List the 8 category toggles. Try `/pc list <Category>` for per-string rows, or `/pc list all` for everything |
+| `/pc list` | List every setting (long; ~170 rows). Pass a category name to filter, e.g. `/pc list Loot` |
 | `/pc get <path>` | Print one setting's current value (e.g. `/pc get Loot.LOOT_ITEM_SELF.enabled`) |
 | `/pc set <path> <value>` | Set one setting (e.g. `/pc set Loot.enabled false`). Bools accept `true/false/on/off/yes/no/1/0` |
 | `/pc reset <Category>` | Reset one category to defaults |
 | `/pc resetall` | Reset every category to defaults |
+| `/pc test` | Print a sample of every active format string to chat (so you can see what real messages look like) |
 
 ### Settings panel
 
@@ -64,18 +65,14 @@ Please report any issues in the [Issues](https://github.com/tusharsaxena/prettyc
 
 ## Version History
 
-**_1.4.0_**
-
-*   Schema-driven slash commands: `/pc list`, `/pc get <path>`, `/pc set <path> <value>`, `/pc reset <Category>`, `/pc resetall` — every settings panel toggle and edit box is also addressable from chat by dot path (e.g. `Loot.LOOT_ITEM_SELF.format`)
-*   New shared schema layer wires the settings panel and the slash commands to a single write path, so changes via either surface are reflected immediately by the other
-
-**_1.3.0_**
-
-*   Settings panel restructured — categories are now sibling sub-pages in the Blizzard addon list (no more tab strip in the right pane), giving each category the full pane width
-*   Per-string layout reflowed — Original and New format string edit boxes now sit side-by-side for direct comparison
-
 **_1.2.0_**
 
+*   New General sub-page in the settings panel hosts addon-wide controls: an Enable PrettyChat master toggle, a Test button (prints a sample of every active format string to chat), and the Reset All to Defaults button (moved from the parent page)
+*   Master enable toggle restores every Blizzard original when off, regardless of per-category settings
+*   Schema-driven slash commands: `/pc list`, `/pc get <path>`, `/pc set <path> <value>`, `/pc reset <Category>`, `/pc resetall`, `/pc test` — every settings panel toggle and edit box is also addressable from chat by dot path (e.g. `Loot.LOOT_ITEM_SELF.format`)
+*   Shared schema layer wires the settings panel and the slash commands to a single write path, so changes via either surface are reflected immediately by the other
+*   Settings panel restructured — categories are now sibling sub-pages in the Blizzard addon list (no more tab strip in the right pane), giving each category the full pane width
+*   Per-string layout reflowed — Original and New format string edit boxes now sit side-by-side for direct comparison
 *   TOC version bump
 
 **_1.1.0_**

@@ -4,6 +4,11 @@
 
 PrettyChat is a World of Warcraft addon that reformats chat messages (loot, currency, money, reputation, XP, honor, tradeskill) with color-coded, pipe-delimited formatting. It overrides Blizzard's `GlobalStrings.lua` format strings rather than parsing chat messages directly, making it compatible with any UI framework (default Blizzard, ElvUI, etc.).
 
+## Workflow
+
+- **Do not auto-commit.** After making code changes, leave them as unstaged edits and report what changed. The user decides when to `git add` / `git commit` / `git push`. Even after a multi-step refactor that "feels like" a natural commit point, wait for an explicit instruction (e.g. "commit this", "commit and push") before running any git mutating command.
+- **Do not bump the version without an explicit instruction.** Leave `PrettyChat.toc` `## Version:` and `CLAUDE.md` "Version" alone unless the user says "bump version", "bump to X.Y.Z", or similar. Do NOT bump as a matter of course when shipping a feature, refactor, or fix — the user controls release cadence and may want multiple changes bundled into one version. Same for the README changelog: don't add a new `**_X.Y.Z_**` heading on your own; if the current version already has changelog notes, append to that section.
+
 ## Project Structure
 
 ```
@@ -60,13 +65,16 @@ Bundled Ace3 libraries (in `Libs/`):
 
 `Schema.lua` is the single source of truth for what's settable. At file-load time (after `Defaults.lua` and `PrettyChat.lua`) it iterates `PrettyChatDefaults` and builds a flat array of rows, one per settable value, exposed at `ns.Schema`.
 
-Three row kinds, addressed by dot path:
+Four row kinds, addressed by dot path:
 
 | Path | Type | Backed by |
 |------|------|-----------|
+| `General.enabled` | bool | `db.profile.enabled` (addon-wide master toggle; "General" is a virtual category — no entry in `PrettyChatDefaults`) |
 | `<Category>.enabled` | bool | `db.profile.categories[Cat].enabled` (via `IsCategoryEnabled` / `EnsureCategoryDB`) |
 | `<Category>.<GLOBALNAME>.enabled` | bool | `db.profile.categories[Cat].disabledStrings[NAME]` (inverted: `disabledStrings[NAME] = true` means disabled) |
 | `<Category>.<GLOBALNAME>.format` | string | `db.profile.categories[Cat].strings[NAME]` (with default fallback) |
+
+The addon-wide toggle wins: when `General.enabled` is false, `ApplyStrings` restores every Blizzard original regardless of per-category and per-string state.
 
 Each row carries its own `get()` and `set(value)` closures — PrettyChat's storage layout doesn't map 1:1 to the path structure, so a generic dot-walker (KickCD's `Helpers.Resolve` style) doesn't fit. Closures are simpler than a special-case resolver.
 
@@ -90,18 +98,22 @@ Public API:
   |---------|--------|
   | `/pc` (no args) / `/pc help` | Print the help index via `ns.Print` |
   | `/pc config` | Open the Blizzard settings panel to the parent page |
-  | `/pc list` | List the 8 category toggles (concise default) |
-  | `/pc list <Category>` | List the category toggle + every per-string `.enabled` and `.format` row |
-  | `/pc list all` | Dump every row across every category (long, opt-in) |
+  | `/pc list` | List every setting and its current value, grouped by category (~170 lines — matches KickCD's `/kcd list` behavior, and is the only way to reach panel/slash parity) |
+  | `/pc list <Category>` | Filter to one category — case-insensitive, prints the category toggle + every per-string `.enabled` and `.format` row |
   | `/pc get <path>` | Print one row's current value |
   | `/pc set <path> <value>` | Write one row. `bool` accepts `true/false/on/off/yes/no/1/0`; `string` consumes the rest of the line literally |
-  | `/pc reset <Category>` | Clear all overrides for one category (case-insensitive name) |
-  | `/pc resetall` | Clear every category's overrides |
+  | `/pc reset <Category>` | Clear all overrides for one category (case-insensitive name). For `General`, clears the addon-wide enabled override back to default (true). |
+  | `/pc resetall` | Clear every category's overrides AND the addon-wide enabled flag |
+  | `/pc test` | Print a sample of every active format string to chat (same action as the General page's "Test" button) |
   | unknown command | Print the help index |
 
   Format-string `set` from chat is a power-user feature — chat input interprets `|c...|r` as inline color escapes, so users must double `||` to send a literal `|`. The settings panel is the recommended editing surface for format strings; `/pc get` output renders with colors applied (no double-escaping at print time).
-- The settings UI uses **one Blizzard sub-page per category** — not tabs. Each category (Loot, Currency, Money, Reputation, Experience, Honor, Tradeskill, Misc) is registered as its own AceConfig options table and added to the Blizzard panel via `AceConfigDialog:AddToBlizOptions(appName, displayName, PARENT_TITLE)`. The third argument nests the entry under the parent in the addon list, so each category renders as a sibling row beneath "Ka0s Pretty Chat" with the full right-pane width to itself (no tab strip).
-- The parent page ("Ka0s Pretty Chat") hosts only a description and the "Reset All to Defaults" button.
+- The settings UI uses **one Blizzard sub-page per category** — not tabs. Categories (`General`, Loot, Currency, Money, Reputation, Experience, Honor, Tradeskill, Misc) are each registered as their own AceConfig options table and added to the Blizzard panel via `AceConfigDialog:AddToBlizOptions(appName, displayName, PARENT_TITLE)`. The third argument nests the entry under the parent in the addon list, so each category renders as a sibling row beneath "Ka0s Pretty Chat" with the full right-pane width to itself (no tab strip).
+- The **General sub-page** hosts addon-wide controls — built by `BuildGeneralOptions()` (in `Config.lua`), separate from the format-string `BuildCategoryOptions()` path because "General" is a virtual category with no entry in `PrettyChatDefaults`. It contains:
+  - **Enable PrettyChat** toggle — bound to the `General.enabled` schema row. Master switch: when off, `ApplyStrings` restores every Blizzard original.
+  - **Test** button — calls `PrettyChat:Test()`, which iterates EVERY format string regardless of enable toggles (so the preview works even when the addon is disabled), substitutes generic sample arguments for each `%[...]type` conversion, and prints the rendered result to `DEFAULT_CHAT_FRAME` so the user sees what each format looks like. If the addon is currently disabled, a `[PC]` notice is emitted alongside the header. Header and footer lines carry the `[PC]` prefix to bracket the test block.
+  - **Reset All to Defaults** button — was previously on the parent page; moved here so every actionable control lives one click in from the addon list.
+- The parent page ("Ka0s Pretty Chat") hosts only a description — no actionable buttons. Sub-categories own their own controls.
 - `ns.Schema.CATEGORY_ORDER` (defined in `Schema.lua`, imported by `Config.lua`) controls the display order of the sub-pages and the iteration order in `/pc list` — iterating `pairs(PrettyChatDefaults)` directly would give a non-deterministic order, so the list is explicit.
 - `PrettyChat.subFrames[category]` stores the frame returned by `AddToBlizOptions` for each sub-page (currently unused, available for `/pc config <Category>` direct-jump in future).
 - Each format string is displayed as a **string set** with the following layout (12 elements per set, increment = 12):
@@ -138,9 +150,11 @@ Public API:
   - `IsCategoryEnabled(category)` — returns user override or default enabled state
   - `IsStringEnabled(category, globalName)` — returns false if string is individually disabled
   - `EnsureCategoryDB(category)` — creates `db.profile.categories[category]` if nil, returns it
-  - `ApplyStrings()` — writes enabled strings to `_G`, restores originals for disabled strings
-  - `ResetCategory(category)` — clears saved overrides for one category, then `NotifyPanelChange(category)`
-  - `ResetAll()` — clears all saved overrides, then `NotifyPanelChange()` (every category)
+  - `IsAddonEnabled()` — returns `db.profile.enabled` (default true if nil); read by `ApplyStrings` and the `General.enabled` schema row
+  - `ApplyStrings()` — writes enabled strings to `_G`, restores originals for disabled strings. Addon-wide disable wins over per-category / per-string state.
+  - `ResetCategory(category)` — clears saved overrides for one category, then `NotifyPanelChange(category)`. Special case: `category == "General"` clears `db.profile.enabled` back to default.
+  - `ResetAll()` — clears `db.profile.enabled` AND every category's overrides, then `NotifyPanelChange()` (every category)
+  - `Test()` — synthesizes one sample chat line per format string (every category, every string — preview ignores enable toggles). `buildSampleArgs(fmt)` (file-local) parses `%[flags][width][.precision]type` conversions and produces typed placeholders (`"Sample"` for `%s`, `42` for integer types, `1.5` for floats, etc.); `pcall(string.format, ...)` keeps a malformed format from breaking the loop.
 - Config.lua helpers:
   - Color constants: `GOLD`, `WHITE`, `RESET` — avoid repeated inline color escape strings
   - `MakeSpacer(order, width?)` — returns a spacer description widget (defaults to full width)
@@ -154,12 +168,13 @@ Public API:
 AceDB with default profile (`true` = shared default):
 
 ```
-PrettyChatDB.profile.categories[catName].enabled                    -- boolean
-PrettyChatDB.profile.categories[catName].strings[globalName]        -- string override
+PrettyChatDB.profile.enabled                                         -- boolean (addon-wide master toggle; default true)
+PrettyChatDB.profile.categories[catName].enabled                     -- boolean
+PrettyChatDB.profile.categories[catName].strings[globalName]         -- string override
 PrettyChatDB.profile.categories[catName].disabledStrings[globalName] -- true = disabled
 ```
 
-Only user-modified values are stored; `nil` means "use default from `PrettyChatDefaults`". Disabled strings are tracked in `disabledStrings`; absent/nil means enabled.
+Only user-modified values are stored; `nil` means "use default" (true for `enabled` / per-category enabled, the `PrettyChatDefaults` value for format strings). Disabled strings are tracked in `disabledStrings`; absent/nil means enabled.
 
 ## Categories
 
@@ -203,7 +218,7 @@ Only user-modified values are stored; `nil` means "use default from `PrettyChatD
 
 ## Development Notes
 
-- **Version**: `1.4.0`
+- **Version**: `1.2.0`
 - **Interface version**: `120000,120001,120005` (The War Within / Midnight / Retail). Classic/Classic Era not yet supported.
 - **No build system** — Lua files are loaded directly by WoW in the order specified in the TOC.
 - `LOOT_ITEM_CREATED_SELF` and `LOOT_ITEM_CREATED_SELF_MULTIPLE` appear in both Loot and Tradeskill categories in `Defaults.lua`. Since `PrettyChatDefaults` is a Lua table, only one category will hold each key — whichever is iterated last by `ApplyStrings()` wins.

@@ -7,14 +7,18 @@ ns.Schema = Schema
 
 -- Display order shared with Config.lua. Iterating PrettyChatDefaults via
 -- pairs() would give a non-deterministic order; this keeps `/pc list`
--- and the addon-list left rail in sync.
+-- and the addon-list left rail in sync. "General" is a virtual category
+-- (no entry in PrettyChatDefaults) that hosts addon-wide settings —
+-- listed first so it sits at the top of the addon list.
 local CATEGORY_ORDER = {
+    "General",
     "Loot", "Currency", "Money", "Reputation",
     "Experience", "Honor", "Tradeskill", "Misc",
 }
 Schema.CATEGORY_ORDER = CATEGORY_ORDER
 
--- Three row kinds. Path scheme:
+-- Four row kinds. Path scheme:
+--   General.enabled                     → addon-wide master toggle (bool)
 --   <Category>.enabled                  → category master toggle (bool)
 --   <Category>.<GLOBALNAME>.enabled     → per-string enable toggle (bool)
 --   <Category>.<GLOBALNAME>.format      → per-string format string
@@ -28,6 +32,25 @@ local byPath = {}      -- O(1) lookup by path string
 local function addRow(row)
     rows[#rows + 1] = row
     byPath[row.path] = row
+end
+
+-- The single addon-wide row. Lives under the "General" virtual
+-- category. When false, ApplyStrings restores every Blizzard original
+-- regardless of per-category / per-string toggles.
+local function buildAddonEnabledRow()
+    addRow({
+        path     = "General.enabled",
+        category = "General",
+        kind     = "addon_enabled",
+        type     = "bool",
+        label    = "Enable PrettyChat",
+        default  = true,
+        get      = function() return PrettyChat:IsAddonEnabled() end,
+        set      = function(v)
+            PrettyChat.db.profile.enabled = v and true or false
+            PrettyChat:ApplyStrings()
+        end,
+    })
 end
 
 local function buildCategoryRow(category)
@@ -89,6 +112,8 @@ end
 -- Build the schema once at file load. PrettyChatDefaults is populated by
 -- Defaults.lua (loaded earlier by the TOC) and the addon object exists
 -- (PrettyChat.lua's :NewAddon call ran), so closures bind to live values.
+buildAddonEnabledRow()
+
 for _, category in ipairs(CATEGORY_ORDER) do
     local catData = PrettyChatDefaults[category]
     if catData then

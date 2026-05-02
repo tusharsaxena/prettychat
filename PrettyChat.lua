@@ -12,6 +12,7 @@ end
 
 local defaults = {
     profile = {
+        enabled    = true,   -- addon-wide master toggle (General.enabled in Schema)
         categories = {},
     },
 }
@@ -45,6 +46,12 @@ function PrettyChat:GetStringValue(category, globalName)
     return PrettyChatDefaults[category].strings[globalName].default
 end
 
+function PrettyChat:IsAddonEnabled()
+    if not (self.db and self.db.profile) then return true end
+    if self.db.profile.enabled == nil then return true end
+    return self.db.profile.enabled
+end
+
 function PrettyChat:IsCategoryEnabled(category)
     local catDB = self.db.profile.categories[category]
     if catDB and catDB.enabled ~= nil then
@@ -69,9 +76,14 @@ function PrettyChat:EnsureCategoryDB(category)
 end
 
 function PrettyChat:ApplyStrings()
+    -- The addon-wide toggle wins: when off, every Blizzard original is
+    -- restored regardless of per-category / per-string state.
+    local addonEnabled = self:IsAddonEnabled()
     for category, catData in pairs(PrettyChatDefaults) do
         for globalName in pairs(catData.strings) do
-            if self:IsCategoryEnabled(category) and self:IsStringEnabled(category, globalName) then
+            if addonEnabled
+               and self:IsCategoryEnabled(category)
+               and self:IsStringEnabled(category, globalName) then
                 _G[globalName] = self:GetStringValue(category, globalName)
             elseif self.originalStrings and self.originalStrings[globalName] then
                 _G[globalName] = self.originalStrings[globalName]
@@ -81,7 +93,12 @@ function PrettyChat:ApplyStrings()
 end
 
 function PrettyChat:ResetCategory(category)
-    if self.db.profile.categories[category] then
+    if category == "General" then
+        -- The General virtual category owns only db.profile.enabled
+        -- (no entry in db.profile.categories). Resetting it clears
+        -- the addon-wide override back to default (true).
+        self.db.profile.enabled = nil
+    elseif self.db.profile.categories[category] then
         self.db.profile.categories[category] = nil
     end
     self:ApplyStrings()
@@ -91,11 +108,85 @@ function PrettyChat:ResetCategory(category)
 end
 
 function PrettyChat:ResetAll()
+    self.db.profile.enabled    = nil
     self.db.profile.categories = {}
     self:ApplyStrings()
     if ns.Schema and ns.Schema.NotifyPanelChange then
         ns.Schema.NotifyPanelChange()  -- nil → all categories
     end
+end
+
+-- ---------------------------------------------------------------------
+-- Test — synthesize sample chat messages from each active format string
+-- ---------------------------------------------------------------------
+--
+-- Walks the format string for printf-style conversions (%[flags][width]
+-- [.precision]type) and returns a list of placeholder values typed to
+-- match each conversion. `%%` escapes are stripped first so they don't
+-- confuse the gmatch.
+local function sampleArg(conversion)
+    conversion = conversion:lower()
+    if conversion == "s" then
+        return "Sample"
+    elseif conversion == "d" or conversion == "i" or conversion == "u"
+        or conversion == "x" or conversion == "o" then
+        return 42
+    elseif conversion == "f" or conversion == "g" or conversion == "e" then
+        return 1.5
+    elseif conversion == "c" then
+        return 65  -- 'A'
+    end
+    return "?"
+end
+
+local function buildSampleArgs(fmt)
+    local clean = fmt:gsub("%%%%", "")
+    local args = {}
+    for ftype in clean:gmatch("%%[%-+ #0]*%d*%.?%d*([%a])") do
+        args[#args + 1] = sampleArg(ftype)
+    end
+    return args
+end
+
+-- Print one synthesized line per format string the user has configured,
+-- regardless of the master / per-category / per-string toggles — so the
+-- preview works as a "what do my formats look like?" check even when
+-- the addon is disabled. The state of the toggles ONLY affects what
+-- ApplyStrings writes to live chat; this preview is for the user.
+--
+-- Output goes to DEFAULT_CHAT_FRAME WITHOUT the [PC] prefix so each
+-- sample line looks exactly like the real loot/currency/XP message
+-- would. Header and footer ARE prefixed, so the test block is
+-- bracketed visually.
+function PrettyChat:Test()
+    DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[PC]|r |cffffffffsample of every format string (preview ignores enable toggles):|r")
+    if not self:IsAddonEnabled() then
+        DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[PC]|r |cffffffff(addon is currently disabled — these formats aren't being applied to live chat)|r")
+    end
+
+    local printed = 0
+    for _, category in ipairs(ns.Schema.CATEGORY_ORDER) do
+        local catData = PrettyChatDefaults[category]
+        if catData then
+            local sortedNames = {}
+            for globalName in pairs(catData.strings) do
+                sortedNames[#sortedNames + 1] = globalName
+            end
+            table.sort(sortedNames)
+            for _, globalName in ipairs(sortedNames) do
+                local fmt = self:GetStringValue(category, globalName)
+                local args = buildSampleArgs(fmt)
+                local ok, result = pcall(string.format, fmt, unpack(args))
+                if ok then
+                    DEFAULT_CHAT_FRAME:AddMessage(result)
+                    printed = printed + 1
+                end
+            end
+        end
+    end
+
+    DEFAULT_CHAT_FRAME:AddMessage(("|cff00ffff[PC]|r |cffffffffend of test output (%d %s shown)|r")
+        :format(printed, printed == 1 and "string" or "strings"))
 end
 
 -- ---------------------------------------------------------------------
@@ -142,7 +233,7 @@ local COMMANDS = {
             end
             self:OpenConfig()
         end},
-    {"list",     "List category toggles — try `/pc list <Category>` or `/pc list all`",
+    {"list",     "List every setting and its current value — try `/pc list <Category>` to filter",
         function(self, rest) listSettings(self, rest) end},
     {"get",      "Print a setting's current value — `/pc get <path>`",
         function(self, rest) getSetting(self, rest) end},
@@ -152,6 +243,8 @@ local COMMANDS = {
         function(self, rest) runReset(self, rest) end},
     {"resetall", "Reset every category to addon defaults",
         function(self) runResetAll(self) end},
+    {"test",     "Print a sample of every active format string to chat",
+        function(self) self:Test() end},
 }
 
 function printHelp(self)
@@ -167,19 +260,14 @@ function listSettings(self, rest)
     if not schemaReady() then return end
     local arg = trim(rest)
 
+    -- No arg → dump every row across every category, matching KickCD's
+    -- /kcd list. With ~170 rows the output is long, but it's the only
+    -- way the slash UI reaches parity with the panel (which exposes a
+    -- toggle and a format edit-box per string). To filter, pass one
+    -- category name as an argument.
     if arg == "" then
-        ns.Print(note("category toggles (try ") .. cmd("/pc list <Category>")
-                 .. note(" for per-string rows, ") .. cmd("/pc list all")
-                 .. note(" for everything):"))
-        for _, category in ipairs(ns.Schema.CATEGORY_ORDER) do
-            local path = category .. ".enabled"
-            ns.Print(("  %s = %s"):format(path, formatValue(ns.Schema.Get(path))))
-        end
-        return
-    end
-
-    if arg:lower() == "all" then
-        ns.Print(note("Available settings:"))
+        ns.Print(note("Available settings (try ") .. cmd("/pc list <Category>")
+                 .. note(" to filter):"))
         for _, category in ipairs(ns.Schema.CATEGORY_ORDER) do
             ns.Print("  [" .. category .. "]")
             for _, row in ipairs(ns.Schema.RowsByCategory(category)) do
