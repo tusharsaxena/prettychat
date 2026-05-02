@@ -1,0 +1,23 @@
+# Enforce CRLF on disk for every text file, regardless of any
+# contributor's core.autocrlf / core.eol settings.
+#
+# How this works: `text=auto` tells git to detect whether a file is
+# text or binary at add-time. For text files, the blob is stored with
+# LF in the repo (git's normalization), and converted to CRLF on
+# checkout (`eol=crlf`). Binary files are left untouched.
+#
+# .gitattributes overrides per-user git config, so a Linux contributor
+# whose `core.autocrlf` is `input` and a Windows contributor whose
+# `core.autocrlf` is `true` will both end up with CRLF in their
+# working tree.
+
+* text=auto eol=crlf
+
+# Belt-and-suspenders: explicitly mark known binary extensions so the
+# auto-detect can't get it wrong on a malformed/edge-case file.
+*.png   binary
+*.jpg   binary
+*.jpeg  binary
+*.gif   binary
+*.ico   binary
+*.zip   binary

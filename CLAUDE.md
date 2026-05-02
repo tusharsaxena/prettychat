@@ -6,7 +6,7 @@ PrettyChat is a World of Warcraft addon that reformats chat messages (loot, curr
 
 ## Workflow
 
-- **Do not auto-commit.** After making code changes, leave them as unstaged edits and report what changed. The user decides when to `git add` / `git commit` / `git push`. Even after a multi-step refactor that "feels like" a natural commit point, wait for an explicit instruction (e.g. "commit this", "commit and push") before running any git mutating command.
+- **Do not auto-stage and do not auto-commit.** After making code changes, leave them as **unstaged** edits in the working tree and report what changed. Do NOT run `git add` (or `git stage`, `git commit`, `git push`, `git restore --staged`, etc.) without an explicit instruction from the user. The user decides when to stage and when to commit — those are two separate gates. Even after a multi-step refactor that "feels like" a natural commit point, wait for explicit phrasing (e.g. "stage this", "commit this", "commit and push") before running any git command that mutates the index, working tree, or refs. Read-only inspection (`git status`, `git diff`, `git log`) is fine without asking.
 - **Do not bump the version without an explicit instruction.** Leave `PrettyChat.toc` `## Version:` and `CLAUDE.md` "Version" alone unless the user says "bump version", "bump to X.Y.Z", or similar. Do NOT bump as a matter of course when shipping a feature, refactor, or fix — the user controls release cadence and may want multiple changes bundled into one version. Same for the README changelog: don't add a new `**_X.Y.Z_**` heading on your own; if the current version already has changelog notes, append to that section.
 
 ## Project Structure
