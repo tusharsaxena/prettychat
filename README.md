@@ -1,7 +1,7 @@
 # Ka0s Pretty Chat
 
 ![version](https://img.shields.io/badge/version-1.2.0-blue)
-![wow](https://img.shields.io/badge/WoW-Midnight%2012.0.5-orange)
+![wow](https://img.shields.io/badge/WoW-Midnight_12.0.5-orange)
 ![license](https://img.shields.io/badge/license-MIT-green)
 
 ![Alt text](https://media.forgecdn.net/attachments/1659/647/prettychat-logo-v2-jpg.jpg)
