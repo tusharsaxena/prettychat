@@ -560,8 +560,7 @@ end
 -- Registration
 -- ---------------------------------------------------------------------
 
-PrettyChat.subFrames      = {}
-PrettyChat.subRefreshers  = {}
+PrettyChat.subRefreshers = {}
 
 local function registerPanels()
     if not (Settings and Settings.RegisterCanvasLayoutCategory
@@ -616,9 +615,8 @@ local function registerPanels()
             end
         end
 
-        local subCategory = Settings.RegisterCanvasLayoutSubcategory(
+        Settings.RegisterCanvasLayoutSubcategory(
             mainCategory, catCtx.panel, category)
-        PrettyChat.subFrames[category] = subCategory
     end
 end
 

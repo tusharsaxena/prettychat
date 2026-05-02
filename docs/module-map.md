@@ -19,8 +19,7 @@ Defaults.lua  ──▶ PrettyChatDefaults (categories + format strings)
 
 GlobalStrings/  ──▶ PrettyChatGlobalStrings (Blizzard reference, ~22,879 entries)
                        │
-                       ├──▶ Config.lua "Original Format String" disabled input
-                       └──▶ ns.GlobalStringSearch  (FindByKey/Value/etc — unused at runtime today)
+                       └──▶ Config.lua "Original Format String" disabled input
 ```
 
 ## Namespace publishing pattern
@@ -35,11 +34,11 @@ Public surfaces are exposed on `ns`:
 
 | Member | Set by | Used by |
 |--------|--------|---------|
-| `ns.Print(msg)` | `PrettyChat.lua` | every file (`GlobalStringSearch.lua`, `Schema.lua` indirectly via `PrettyChat.*`, slash command bodies) |
+| `ns.Print(msg)` | `PrettyChat.lua` | every file (`Schema.lua` indirectly via `PrettyChat.*`, slash command bodies) |
 | `ns.Schema` | `Schema.lua` | `PrettyChat.lua` (slash dispatch), `Config.lua` (every widget get/set; also overrides `Schema.NotifyPanelChange` with a refresher dispatch) |
 | `ns.Const` | `Constants.lua` | `Config.lua` (panel padding / header height / spacers) |
-| `ns.RenderSample` | `PrettyChat.lua` | `Config.lua` (per-string sample row) |
-| `ns.GlobalStringSearch` | `GlobalStringSearch.lua` | nobody at runtime today; kept for future debug tooling |
+| `ns.RenderSample(fmt)` | `PrettyChat.lua` | `Config.lua` (per-string Preview EditBox) |
+| `ns.COMMANDS` | `PrettyChat.lua` | `Config.lua` (parent page's slash-command list — keeps panel and `/pc help` in lockstep with one source) |
 
 The addon object itself (`PrettyChat`, an `AceAddon-3.0` object) is **not** published on `ns`. Other files reach it via `LibStub("AceAddon-3.0"):GetAddon("PrettyChat")`.
 
@@ -75,8 +74,7 @@ PrettyChat:OnSlashCommand(input)       -- parses verb + rest, dispatches via the
 See [schema.md](./schema.md) for the row kinds, the single write path, and the auto-clear-on-default behavior.
 
 ```lua
-ns.Schema.AllRows()                            -- ordered row list (full)
-ns.Schema.RowsByCategory(category)             -- filtered subset
+ns.Schema.RowsByCategory(category)             -- filtered subset for one category
 ns.Schema.FindByPath(path)                     -- O(1) lookup by dot path
 ns.Schema.Get(path)                            -- read through the row's get() closure
 ns.Schema.Set(path, value)                     -- write through the row's set() closure → ApplyStrings → NotifyPanelChange
@@ -96,17 +94,6 @@ The single chokepoint for addon chat output. Use this, not raw `print()` or `sel
 
 `Test()` is an intentional exception — sample lines are emitted via `DEFAULT_CHAT_FRAME:AddMessage` *without* the `[PC]` prefix so each rendered preview looks like a real chat message. Header/footer carry the prefix.
 
-### `ns.GlobalStringSearch` (`GlobalStringSearch.lua`)
-
-```lua
-ns.GlobalStringSearch:EnsureLoaded()                 -- C_AddOns.LoadAddOn("GlobalStrings") (idempotent in practice — see global-strings.md)
-ns.GlobalStringSearch:FindByKey(pattern, limit?)     -- substring match against keys, case-insensitive
-ns.GlobalStringSearch:FindByValue(pattern, limit?)   -- substring match against values
-ns.GlobalStringSearch:Find(pattern, limit?)          -- both
-```
-
-Returns sorted `{ {key, value}, ... }` arrays. `limit` defaults to 50. **Not consumed by any slash command or panel widget today** — kept for future debug tooling. `Config.lua` reads `_G.PrettyChatGlobalStrings` directly rather than going through this API.
-
 ## Load order
 
 `PrettyChat.toc` is the source of truth. Order is dependency, not alphabetical:
@@ -118,6 +105,5 @@ Returns sorted `{ {key, value}, ... }` arrays. `limit` defaults to 50. **Not con
 5. `PrettyChat.lua` — creates the AceAddon object, defines `ns.Print` + `ns.RenderSample`, registers slash commands. **Every later file assumes the addon object exists** (`LibStub("AceAddon-3.0"):GetAddon("PrettyChat")`).
 6. `Schema.lua` — builds `rows` / `byPath` from `PrettyChatDefaults` (which is loaded earlier). Closures bind to live values.
 7. `Config.lua` — registers the parent canvas-layout category + one sub-page per category. Defers AceGUI body rendering until each panel's first `OnShow`. Overrides `ns.Schema.NotifyPanelChange`.
-8. `GlobalStringSearch.lua` — last; depends on nothing in particular.
 
 If you add a new file, put it in the right place in `PrettyChat.toc`.

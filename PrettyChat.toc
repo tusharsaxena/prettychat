@@ -33,4 +33,3 @@ Defaults.lua
 PrettyChat.lua
 Schema.lua
 Config.lua
-GlobalStringSearch.lua

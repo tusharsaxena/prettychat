@@ -32,8 +32,10 @@ Public surfaces are exposed on `ns`:
 | Member | Set by | Used by |
 |--------|--------|---------|
 | `ns.Print(msg)` | `PrettyChat.lua` | every file (chat output chokepoint) |
-| `ns.Schema` | `Schema.lua` | `PrettyChat.lua` (slash dispatch), `Config.lua` (every widget get/set) |
-| `ns.GlobalStringSearch` | `GlobalStringSearch.lua` | nobody at runtime today; kept for future debug tooling |
+| `ns.Schema` | `Schema.lua` | `PrettyChat.lua` (slash dispatch), `Config.lua` (every widget get/set; rebinds `Schema.NotifyPanelChange` to a refresher dispatch) |
+| `ns.Const` | `Constants.lua` | `Config.lua` (panel padding / header height / spacers) |
+| `ns.RenderSample(fmt)` | `PrettyChat.lua` | `Config.lua` (per-string Preview EditBox) |
+| `ns.COMMANDS` | `PrettyChat.lua` | `Config.lua` (parent page's slash-command list) |
 
 The addon object itself (`PrettyChat`, an `AceAddon-3.0` object) is **not** published on `ns`. Other files reach it via `LibStub("AceAddon-3.0"):GetAddon("PrettyChat")`.
 
@@ -60,11 +62,11 @@ Topic-specific detail lives in `docs/`. Read on demand — these are not auto-lo
 |-------|------|--------------|
 | In/out scope + resolved decisions | [docs/scope.md](./docs/scope.md) | Evaluating a feature request; deciding whether to add a category. |
 | Per-file responsibility map | [docs/file-index.md](./docs/file-index.md) | "Which file owns X?" |
-| Module roles + public APIs (`ns.Schema`, `ns.Print`, `ns.GlobalStringSearch`, `PrettyChat:Test`) | [docs/module-map.md](./docs/module-map.md) | Designing a cross-module change. |
+| Module roles + public APIs (`ns.Schema`, `ns.Print`, `ns.Const`, `ns.RenderSample`, `ns.COMMANDS`, `PrettyChat:Test`) | [docs/module-map.md](./docs/module-map.md) | Designing a cross-module change. |
 | Snapshot → ApplyStrings → restore + 3-layer enable order | [docs/override-pipeline.md](./docs/override-pipeline.md) | Touching `OnEnable`, `ApplyStrings`, or any path that mutates `_G[GLOBALNAME]`. |
 | Schema row kinds + single write path + auto-clear + AceDB shape | [docs/schema.md](./docs/schema.md) | Changing how a setting is stored / read / written; adding a new row kind. |
 | Canvas-layout framework + unified header + virtual `General` + per-string row + Test + color palette | [docs/settings-panel.md](./docs/settings-panel.md) | Touching `Config.lua`, `Constants.lua`, or anything that renders in the settings panel. |
 | `COMMANDS` table + full command reference + `\|\|` ↔ `\|` chat-input escape | [docs/slash-commands.md](./docs/slash-commands.md) | Adding a slash command; debugging `/pc set` for format strings. |
-| Dual-load story (eager + LoD) + splitter script + when to re-run | [docs/global-strings.md](./docs/global-strings.md) | Patch-day chunk regeneration; touching `GlobalStrings/` or `GlobalStringSearch.lua`. |
+| Dual-load story (eager + LoD) + splitter script + when to re-run | [docs/global-strings.md](./docs/global-strings.md) | Patch-day chunk regeneration; touching `GlobalStrings/`. |
 | Recipes (add string, add category, fix a broken format, regenerate chunks) | [docs/common-tasks.md](./docs/common-tasks.md) | Routine modifications. |
 | Quick recipe + full smoke-test suite (Boot / Override / Panel / Slash / Sync / Persistence groups) | [docs/smoke-tests.md](./docs/smoke-tests.md) | Verifying any change in-game; pre-release; post-patch. |

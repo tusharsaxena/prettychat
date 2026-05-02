@@ -247,7 +247,7 @@ local function formatValue(v)
 end
 
 local function schemaReady()
-    if not (ns.Schema and ns.Schema.AllRows) then
+    if not (ns.Schema and ns.Schema.RowsByCategory) then
         ns.Print("schema not ready yet")
         return false
     end

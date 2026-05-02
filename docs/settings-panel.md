@@ -19,7 +19,7 @@ for _, category in ipairs(CATEGORY_ORDER) do
 end
 ```
 
-`PrettyChat.subFrames[category]` stores each subcategory object. `PrettyChat.optionsCategoryID = mainCategory:GetID()` is what `PrettyChat:OpenConfig()` passes to `Settings.OpenToCategory`.
+`PrettyChat.optionsCategoryID = mainCategory:GetID()` is what `PrettyChat:OpenConfig()` passes to `Settings.OpenToCategory`. `PrettyChat.optionsCategory` (the category object itself) is what `expandMainCategory` walks for the left-tree disclosure toggle.
 
 Bootstrap waits for `PLAYER_LOGIN`, then calls `registerPanels()`. AceGUI body rendering is **deferred until the panel's first `OnShow`** — at PLAYER_LOGIN the body's frame width is zero, and AceGUI's `List` layout sizes children against the container's current width, so building too early produces a stack of misaligned widgets.
 

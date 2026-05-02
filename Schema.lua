@@ -135,10 +135,6 @@ end
 -- Public API
 -- ---------------------------------------------------------------------
 
-function Schema.AllRows()
-    return rows
-end
-
 function Schema.FindByPath(path)
     return byPath[path]
 end

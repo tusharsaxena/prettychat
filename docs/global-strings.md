@@ -7,7 +7,7 @@
 This is intentional, but worth flagging because the historical name "LoadOnDemand sub-addon" is misleading about runtime behavior.
 
 - **`PrettyChat.toc`** loads `GlobalStrings_001.lua` … `GlobalStrings_010.lua` *eagerly at addon startup* (load order: after `Libs/`, before `Defaults.lua`). This populates `PrettyChatGlobalStrings` so `Config.lua`'s "Original Format String" disabled input can resolve every key without an explicit load step.
-- **`GlobalStrings/GlobalStrings.toc`** is a separate `LoadOnDemand: 1` sub-addon (`PrettyChat - GlobalStrings`, version `1.1.0`) that *also* loads the same chunks. `GlobalStringSearch:EnsureLoaded()` calls `C_AddOns.LoadAddOn("GlobalStrings")`, but because the chunks are already loaded by the main TOC, the call is effectively idempotent (Blizzard returns the addon as already-loaded).
+- **`GlobalStrings/GlobalStrings.toc`** is a separate `LoadOnDemand: 1` sub-addon (`PrettyChat - GlobalStrings`, version `1.1.0`) that *also* loads the same chunks. Nothing in the addon currently calls `C_AddOns.LoadAddOn("GlobalStrings")` — the LoD path is dormant — but the sub-addon TOC stays packaged so a future caller can re-introduce on-demand loading without a re-split.
 
 The redundant load path exists for historical reasons: the sub-addon was originally LoD-only, then the main TOC was given the chunks directly when the Settings panel started rendering originals at panel-open time. The LoD packaging now mostly serves as a guard for a future world where the eager load is removed (e.g. to cut startup memory).
 
@@ -26,21 +26,6 @@ The redundant load path exists for historical reasons: the sub-addon was origina
 Populated eagerly at addon load. Keyed by Blizzard's `GLOBALNAME` constants, valued with the Blizzard-default format string (the same string `_G[GLOBALNAME]` would return at addon load time, *before* PrettyChat overrides anything).
 
 This is the same data PrettyChat snapshots into `self.originalStrings` at `OnEnable` for the "restore on disable" path — but `originalStrings` only covers keys mentioned in `PrettyChatDefaults` (~81 entries), while `PrettyChatGlobalStrings` carries the full ~22,879. The extra entries support the panel's "Original Format String" display for any global key, even ones the user has added to `Defaults.lua` since the addon last shipped.
-
-## The search API
-
-`ns.GlobalStringSearch` (defined in `GlobalStringSearch.lua`) exposes:
-
-```lua
-ns.GlobalStringSearch:EnsureLoaded()                 -- C_AddOns.LoadAddOn("GlobalStrings"); idempotent
-ns.GlobalStringSearch:FindByKey(pattern, limit?)     -- substring match against keys, case-insensitive
-ns.GlobalStringSearch:FindByValue(pattern, limit?)   -- substring match against values
-ns.GlobalStringSearch:Find(pattern, limit?)          -- both
-```
-
-Returns sorted `{ {key, value}, ... }` arrays. `limit` defaults to 50.
-
-**Not consumed by any slash command or panel widget today** — it's available for future debug tooling. `Config.lua` reads `_G.PrettyChatGlobalStrings` directly rather than going through this API.
 
 ## Regenerating chunks after a WoW patch
 

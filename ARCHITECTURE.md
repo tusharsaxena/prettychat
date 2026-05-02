@@ -24,13 +24,12 @@ Defaults.lua  ─▶ PrettyChatDefaults (categories + format strings + per-cat e
 
 GlobalStrings/   ─▶ PrettyChatGlobalStrings (Blizzard reference, ~22,879 entries)
                        │
-                       ├─▶ Config.lua "Original Format String" disabled input
-                       └─▶ ns.GlobalStringSearch  (FindByKey/Value — unused at runtime today)
+                       └─▶ Config.lua "Original Format String" disabled input
 ```
 
 | Subsystem | Lives in | Read |
 |-----------|----------|------|
-| Per-module APIs + roles | `PrettyChat.lua`, `Schema.lua`, `Config.lua`, `Constants.lua`, `Defaults.lua`, `GlobalStringSearch.lua` | [docs/module-map.md](./docs/module-map.md) |
+| Per-module APIs + roles | `PrettyChat.lua`, `Schema.lua`, `Config.lua`, `Constants.lua`, `Defaults.lua` | [docs/module-map.md](./docs/module-map.md) |
 | Snapshot → ApplyStrings → restore; 3-layer enable order | `PrettyChat.lua` (`OnEnable`, `ApplyStrings`) | [docs/override-pipeline.md](./docs/override-pipeline.md) |
 | Schema row kinds + single write path + auto-clear + AceDB shape | `Schema.lua` (`Schema.Set`, row closures) | [docs/schema.md](./docs/schema.md) |
 | Canvas-layout framework + unified header + virtual `General` + per-string row + Test + color palette | `Config.lua`, `Constants.lua` | [docs/settings-panel.md](./docs/settings-panel.md) |
@@ -78,6 +77,5 @@ All vendored under `Libs/`:
 5. `PrettyChat.lua` — creates the AceAddon object, defines `ns.Print` + `ns.RenderSample`, registers slash commands. **Every later file assumes the addon object exists** (`LibStub("AceAddon-3.0"):GetAddon("PrettyChat")`).
 6. `Schema.lua` — builds `rows` / `byPath` from `PrettyChatDefaults`. Closures bind to live values.
 7. `Config.lua` — registers the parent canvas-layout category + one sub-page per category (driven by `ns.Schema.CATEGORY_ORDER`). Defers AceGUI body rendering until each panel's first `OnShow`.
-8. `GlobalStringSearch.lua`.
 
 If you add a new file, put it in the right place in `PrettyChat.toc`.

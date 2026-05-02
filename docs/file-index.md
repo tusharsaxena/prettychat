@@ -11,7 +11,6 @@ Where each responsibility lives in the source tree. Match this map to the actual
 | `Schema.lua` | Builds a flat `rows` array and `byPath` lookup from `PrettyChatDefaults` at file-load. Exposes `ns.Schema` — the **single write path** shared by slash commands and panel widgets. Owns `CATEGORY_ORDER` (the canonical display order, including the virtual `General`). See [schema.md](./schema.md). |
 | `Constants.lua` | Layout constants on `ns.Const` (panel padding / header height / Defaults-button width / spacers). Side-effect-free; loads early so `Config.lua` can read `ns.Const.*` without an existence check. |
 | `Config.lua` | Settings panel built directly on `Settings.RegisterCanvasLayoutCategory` / `RegisterCanvasLayoutSubcategory` with AceGUI body content. `buildGeneralBody` builds the virtual `General` page; `buildCategoryBody` + `buildStringRow` build each format-bearing page; `buildParentBody` renders the parent landing page. Overrides `ns.Schema.NotifyPanelChange` with a refresher dispatch. All widget callbacks delegate to `ns.Schema.Set/Get`. See [settings-panel.md](./settings-panel.md). |
-| `GlobalStringSearch.lua` | Public search API over the `PrettyChatGlobalStrings` global (`EnsureLoaded` / `FindByKey` / `FindByValue` / `Find`). Loaded with the main addon. **Not currently consumed at runtime** — `Config.lua` reads `_G.PrettyChatGlobalStrings` directly for the panel's "Original" disabled input. Kept for future debug tooling. |
 
 ## GlobalStrings sub-tree
 
@@ -25,7 +24,7 @@ Where each responsibility lives in the source tree. Match this map to the actual
 
 ## Shared infrastructure
 
-- `PrettyChat.toc` — Interface line (`120000, 120001, 120005`), version, SavedVariables (`PrettyChatDB`), and file load order. Order is dependency order, not alphabetical: Libs → GlobalStrings chunks → `Constants.lua` → `Defaults.lua` → `PrettyChat.lua` → `Schema.lua` → `Config.lua` → `GlobalStringSearch.lua`.
+- `PrettyChat.toc` — Interface line (`120000, 120001, 120005`), version, SavedVariables (`PrettyChatDB`), and file load order. Order is dependency order, not alphabetical: Libs → GlobalStrings chunks → `Constants.lua` → `Defaults.lua` → `PrettyChat.lua` → `Schema.lua` → `Config.lua`.
 - `Libs/` — vendored Ace3 + LibStub. Tracked in git (standard WoW addon practice).
 - `media/` — local copies of the logo + before/after screenshots. The README references CDN URLs, not these — they're kept around as source backups.
 - `.gitattributes` — forces CRLF on disk for all text files (overrides per-user `core.autocrlf`).
