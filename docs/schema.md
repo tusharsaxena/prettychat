@@ -56,7 +56,7 @@ So writing a format back to its default value via `/pc set` or the panel acts as
 
 | Function | Purpose |
 |----------|---------|
-| `Schema.AllRows()` | Full ordered row list. Used by `/pc list` no-arg. |
+| `Schema.AllRows()` | Full ordered row list. Defined but currently uncalled — `/pc list` no-arg iterates `CATEGORY_ORDER` and calls `RowsByCategory` per category instead. Kept as a public surface for future scripted access. |
 | `Schema.RowsByCategory(category)` | Filtered subset. Used by `/pc list <Category>` and Config.lua's per-page builder. |
 | `Schema.FindByPath(path)` | O(1) lookup; returns the row or `nil`. |
 | `Schema.Get(path)` / `Schema.Set(path, value)` | Read/write through the row's closures. `Set` returns `false` if the path is unknown. |

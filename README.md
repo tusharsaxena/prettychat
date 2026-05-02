@@ -41,7 +41,7 @@ Everything is configurable through the standard Blizzard Settings panel and thro
 
 ### Settings panel
 
-PrettyChat appears in the Blizzard Settings panel under **Ka0s Pretty Chat**. The parent page hosts only a description; nine sub-pages hold the actionable controls. Each sub-page is a sibling row in the addon list, so each gets the full right-pane width to itself — no tab strip.
+PrettyChat appears in the Blizzard Settings panel under **Ka0s Pretty Chat**. The parent page is a read-only landing — addon logo, the one-line description, and the slash-command reference. Nine sub-pages hold the actionable controls. Each sub-page is a sibling row in the addon list, so each gets the full right-pane width to itself — no tab strip.
 
 *   **General** — addon-wide controls. **Enable PrettyChat** master toggle (when off, every Blizzard original is restored regardless of per-category state), a **Test** button (prints a sample of every format string to chat so you can see what each looks like), and the **Reset All to Defaults** button.
 *   **Loot** — 19 strings covering item pickups, self/group loot, bonus rolls, and currency drops via loot.
@@ -53,7 +53,7 @@ PrettyChat appears in the Blizzard Settings panel under **Ka0s Pretty Chat**. Th
 *   **Tradeskill** — 8 strings for crafted-item creation and lock opening.
 *   **Misc** — 2 catch-all strings (quest reward XP, zone exploration).
 
-Each category sub-page lists every format string it owns. A row contains: an **Enable** checkbox, the GlobalString key name (e.g. `LOOT_ITEM_SELF`), a side-by-side pair of edit boxes showing the original Blizzard format string and the editable PrettyChat replacement, and a full-width preview that renders the current format with sample arguments substituted in. Disabled strings revert to Blizzard's original at runtime.
+Each category sub-page lists every format string it owns. A row contains: an **Enable** checkbox + visible label, the GlobalString key name caption (e.g. `LOOT_ITEM_SELF`), a side-by-side pair of edit boxes showing the original Blizzard format string and the editable PrettyChat replacement, and — whenever your value differs from the shipped default — a rendered sample line beneath plus a per-string **Reset** button to revert that one string to its default. Each category page also has a **Defaults** button in the page header that resets every string in that category. Disabled strings revert to Blizzard's original at runtime.
 
 ## Notes
 
@@ -61,9 +61,9 @@ A few user-facing behaviors worth knowing. Implementation details live in [ARCHI
 
 - **The master toggle wins.** `General → Enable PrettyChat` (or `/pc set General.enabled false`) restores every Blizzard original regardless of per-category and per-string state. Your customizations stay in the database, just unapplied.
 - **Three enable layers**, checked in this order: master → category → per-string. A string only renders with your format if all three are on.
-- **Edit format strings from the panel.** It shows raw escape codes (`|cAARRGGBB...|r`) and renders a live preview as you type. Editing from chat is supported but you must double `|` → `||` (WoW's chat input interprets `|c…|r` as inline color escapes the moment you press Enter).
+- **Edit format strings from the panel.** It shows raw escape codes (`|cAARRGGBB...|r`) and, whenever your value differs from the default, renders a sample line below the edit box on commit (Enter). Editing from chat is supported but you must double `|` → `||` (WoW's chat input interprets `|c…|r` as inline color escapes the moment you press Enter).
 - **Format specifiers must match Blizzard's.** Each Blizzard string has a fixed signature (`%s`, `%d`, `%.1f`, `%2$s`, etc.). Drop or reorder a `%`-conversion and the line errors at `string.format`. Copy from the panel's left (Original) edit box and only modify the surrounding text and color escapes.
-- **Reset paths.** Whole category: `/pc reset <Category>`. One string back to Blizzard's original: `/pc set <Category>.<GLOBALNAME>.enabled false`. One string back to PrettyChat's default: set the format to its default value — the schema clears overrides that match the default automatically.
+- **Reset paths.** One string back to PrettyChat's default: click the per-string **Reset** button in the panel (only shown when your value differs from the default), or set the format to its default text via `/pc set` — the schema clears overrides that match the default automatically. Whole category: the category page's header **Defaults** button or `/pc reset <Category>`. One string back to Blizzard's original: disable its per-string toggle (or `/pc set <Category>.<GLOBALNAME>.enabled false`). Everything: General → **Reset all to defaults** (popup-confirmed) or `/pc resetall`.
 
 ## FAQ
 

@@ -75,14 +75,13 @@ Each command body is a small file-local function in `PrettyChat.lua`:
 
 ## Why no chat-side confirm popup for resets
 
-The slash command itself is the assertion. The panel buttons gate Reset / Reset All behind AceConfig `confirm = true` popups because mis-clicks happen; chat reset commands take more typing and rarely fire by accident. If the asymmetry ever bites, add a `StaticPopupDialogs` confirmation in `runResetAll` — but don't add one mid-feature without a triggering complaint.
+The slash command itself is the assertion. In the panel, the per-category **Defaults** header button has no popup confirm (a category reset is one click, recoverable by editing back), and the **Reset all to defaults** button on General is gated by the `PRETTYCHAT_RESET_ALL` StaticPopup because the global reset is destructive. Chat reset commands take more typing and rarely fire by accident, so they skip the confirm. If the asymmetry ever bites, add a `StaticPopupDialogs` confirmation in `runResetAll` — but don't add one mid-feature without a triggering complaint.
 
 ## What lives in the panel but NOT in the slash UI
 
-Three things you can't reach via `/pc`:
+Two things you can't reach via `/pc`:
 
-- **Per-string Reset to PrettyChat default**. Indirect: `/pc set <Cat>.<NAME>.format <default value>` triggers the auto-clear, but you'd have to type the default exactly. The panel's per-category Reset is the practical path.
-- **Live preview of an unsaved edit.** The panel's Preview row renders `ns.Schema.Get(formatPath)`, which reflects the saved value. Slash users get the same preview *after* `/pc set` lands, via `/pc test`.
-- **Visual diff between Original and New.** The panel renders both side-by-side. Chat users would need `/pc get` against the format row plus an external GlobalStrings reference.
+- **Live sample of a saved value.** The panel's per-row sample line renders `ns.RenderSample(currentValue)` whenever your value differs from the default. Slash users get an equivalent dump *after* `/pc set` lands, via `/pc test` (which prints every format, not just the changed one).
+- **Visual diff between Original and New.** The panel renders both side-by-side per row. Chat users would need `/pc get` against the format row plus an external GlobalStrings reference.
 
-These gaps are by design — the panel is the editing surface, slash is for scripted / power-user workflows.
+The per-string **Reset** button (one click on the row when your value diverges from the default) and the per-category **Defaults** header button mirror what `/pc set <path> <default>` and `/pc reset <Category>` do — both surfaces are reachable from chat. These remaining gaps are by design — the panel is the editing surface, slash is for scripted / power-user workflows.

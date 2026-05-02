@@ -41,7 +41,7 @@ All layout dimensions live in `Constants.lua` (`ns.Const.PANEL_PADDING_X`, `PANE
 
 `patchAlwaysShowScrollbar(scroll)` rebinds the AceGUI ScrollFrame's `FixScroll` so:
 
-- The scrollbar (and its 20 px right-side gutter) is shown on every page, regardless of overflow. Short pages (General) and long pages (Loot, ~18 strings) line up at the same right edge.
+- The scrollbar (and its 20 px right-side gutter) is shown on every page, regardless of overflow. Short pages (General) and long pages (Loot, 19 strings) line up at the same right edge.
 - When content fits, the thumb parks at the top, the scrollbar greys out, and mousewheel input is inert. When content overflows, the upstream FixScroll logic runs unchanged.
 - On widget release, the original FixScroll / MoveScroll / OnRelease are restored so the AceGUI pool returns clean for any subsequent acquirer.
 

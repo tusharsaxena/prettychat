@@ -30,7 +30,7 @@ GlobalStrings/   ─▶ PrettyChatGlobalStrings (Blizzard reference, ~22,879 ent
 
 | Subsystem | Lives in | Read |
 |-----------|----------|------|
-| Per-module APIs + roles | `PrettyChat.lua`, `Schema.lua`, `Config.lua`, `Defaults.lua`, `GlobalStringSearch.lua` | [docs/module-map.md](./docs/module-map.md) |
+| Per-module APIs + roles | `PrettyChat.lua`, `Schema.lua`, `Config.lua`, `Constants.lua`, `Defaults.lua`, `GlobalStringSearch.lua` | [docs/module-map.md](./docs/module-map.md) |
 | Snapshot → ApplyStrings → restore; 3-layer enable order | `PrettyChat.lua` (`OnEnable`, `ApplyStrings`) | [docs/override-pipeline.md](./docs/override-pipeline.md) |
 | Schema row kinds + single write path + auto-clear + AceDB shape | `Schema.lua` (`Schema.Set`, row closures) | [docs/schema.md](./docs/schema.md) |
 | Canvas-layout framework + unified header + virtual `General` + per-string row + Test + color palette | `Config.lua`, `Constants.lua` | [docs/settings-panel.md](./docs/settings-panel.md) |
