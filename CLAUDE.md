@@ -12,18 +12,21 @@ PrettyChat is a World of Warcraft addon that reformats chat messages (loot, curr
 ## Project Structure
 
 ```
-PrettyChat.toc          # Addon metadata, file load order, SavedVariables
-PrettyChat.lua          # Core addon (AceAddon, AceDB, AceConsole) + slash dispatch
+PrettyChat.toc          # Addon metadata, load order, SavedVariables (also loads GlobalStrings chunks eagerly)
+PrettyChat.lua          # Core addon (AceAddon, AceDB, AceConsole) + slash dispatch + Test()
 Schema.lua              # Schema layer — flat row list generated from PrettyChatDefaults; shared write path for slash + panel
 Config.lua              # AceConfig-based settings UI (widgets read/write via ns.Schema)
 Defaults.lua            # PrettyChatDefaults table (all format strings)
-GlobalStringSearch.lua  # Search API for GlobalStrings data (loaded with main addon)
+GlobalStringSearch.lua  # Search API over PrettyChatGlobalStrings (loaded with main addon; API currently unused by slash commands)
 README.md               # CurseForge/GitHub description with screenshots
-.gitignore              # OS/editor ignores
+LICENSE                 # MIT
+.gitattributes          # Forces CRLF on disk for all text files (overrides per-user core.autocrlf)
+.gitignore              # OS/editor ignores (also ignores TODO.md and .claude/)
 Libs/                   # Bundled Ace3 libraries
-GlobalStrings/          # LoadOnDemand sub-addon with searchable GlobalStrings data
-  GlobalStrings.toc     # Sub-addon TOC (LoadOnDemand: 1)
-  GlobalStrings.lua     # Bundled Blizzard reference (~1.57 MB, source file)
+media/                  # Source images (logo + screenshots) — local copies, not referenced by README which uses CDN URLs
+GlobalStrings/          # GlobalStrings data — chunks loaded eagerly by PrettyChat.toc; also packaged as a LoadOnDemand sub-addon
+  GlobalStrings.toc     # Sub-addon TOC ("PrettyChat - GlobalStrings", LoadOnDemand: 1) — see GlobalStrings Sub-Addon section for the dual-load story
+  GlobalStrings.lua     # Bundled Blizzard reference (~1.6 MB, source file, not loaded by any TOC)
   GlobalStrings_001.lua # Chunk files (10 total, split by first letter of key)
   ...
   GlobalStrings_010.lua
@@ -83,7 +86,7 @@ Public API:
 - `ns.Schema.AllRows()` — full ordered row list
 - `ns.Schema.RowsByCategory(category)` — filtered subset
 - `ns.Schema.FindByPath(path)` — exact lookup
-- `ns.Schema.Get(path)` / `ns.Schema.Set(path, value)` — read/write through the row's closures
+- `ns.Schema.Get(path)` / `ns.Schema.Set(path, value)` — read/write through the row's closures. For `string_format` rows specifically, the row's `set` closure stores `nil` (clears the override) when `value` matches the row's PrettyChat default — so writing a format back to its default value via `/pc set` or the panel acts as a per-string reset
 - `ns.Schema.ResolveCategory(name)` — case-insensitive lookup → canonical PascalCase name
 - `ns.Schema.NotifyPanelChange(category?)` — calls `AceConfigRegistry:NotifyChange("PrettyChat_<Cat>")` so an open AceConfig panel re-renders. Called automatically by `Schema.Set`, `PrettyChat:ResetCategory`, and `PrettyChat:ResetAll`. Pass `nil` to fire for every category.
 - `ns.Schema.CATEGORY_ORDER` — display order (also imported by `Config.lua` so left-rail order and `/pc list` order stay aligned)
@@ -96,23 +99,23 @@ Public API:
 
   | Command | Effect |
   |---------|--------|
-  | `/pc` (no args) / `/pc help` | Print the help index via `ns.Print` |
-  | `/pc config` | Open the Blizzard settings panel to the parent page |
+  | `/pc` (no args) / `/pc help` | Print the help index via `ns.Print`. Header line includes the addon version (`v<VERSION>`, read from TOC `## Version:` via `C_AddOns.GetAddOnMetadata`). |
+  | `/pc config` | Open the Blizzard settings panel to the parent page. Refuses during combat (`InCombatLockdown()`) — Blizzard's category-switch is protected and would taint the panel. |
   | `/pc list` | List every setting and its current value, grouped by category (~170 lines — matches KickCD's `/kcd list` behavior, and is the only way to reach panel/slash parity) |
   | `/pc list <Category>` | Filter to one category — case-insensitive, prints the category toggle + every per-string `.enabled` and `.format` row |
   | `/pc get <path>` | Print one row's current value |
-  | `/pc set <path> <value>` | Write one row. `bool` accepts `true/false/on/off/yes/no/1/0`; `string` consumes the rest of the line literally |
+  | `/pc set <path> <value>` | Write one row. `bool` accepts `true/false/on/off/yes/no/1/0`; `string` consumes the rest of the line literally. For `string_format` rows, setting `<value>` to the row's PrettyChat default clears the override (see Schema Layer for the auto-clear behavior). |
   | `/pc reset <Category>` | Clear all overrides for one category (case-insensitive name). For `General`, clears the addon-wide enabled override back to default (true). |
   | `/pc resetall` | Clear every category's overrides AND the addon-wide enabled flag |
-  | `/pc test` | Print a sample of every active format string to chat (same action as the General page's "Test" button) |
+  | `/pc test` | Print a sample of every format string to chat — preview ignores enable toggles, so it works even when the addon is disabled (same action as the General page's "Test" button) |
   | unknown command | Print the help index |
 
   Format-string `set` from chat is a power-user feature — chat input interprets `|c...|r` as inline color escapes, so users must double `||` to send a literal `|`. The settings panel is the recommended editing surface for format strings; `/pc get` output renders with colors applied (no double-escaping at print time).
 - The settings UI uses **one Blizzard sub-page per category** — not tabs. Categories (`General`, Loot, Currency, Money, Reputation, Experience, Honor, Tradeskill, Misc) are each registered as their own AceConfig options table and added to the Blizzard panel via `AceConfigDialog:AddToBlizOptions(appName, displayName, PARENT_TITLE)`. The third argument nests the entry under the parent in the addon list, so each category renders as a sibling row beneath "Ka0s Pretty Chat" with the full right-pane width to itself (no tab strip).
 - The **General sub-page** hosts addon-wide controls — built by `BuildGeneralOptions()` (in `Config.lua`), separate from the format-string `BuildCategoryOptions()` path because "General" is a virtual category with no entry in `PrettyChatDefaults`. It contains:
   - **Enable PrettyChat** toggle — bound to the `General.enabled` schema row. Master switch: when off, `ApplyStrings` restores every Blizzard original.
-  - **Test** button — calls `PrettyChat:Test()`, which iterates EVERY format string regardless of enable toggles (so the preview works even when the addon is disabled), substitutes generic sample arguments for each `%[...]type` conversion, and prints the rendered result to `DEFAULT_CHAT_FRAME` so the user sees what each format looks like. If the addon is currently disabled, a `[PC]` notice is emitted alongside the header. Header and footer lines carry the `[PC]` prefix to bracket the test block.
-  - **Reset All to Defaults** button — was previously on the parent page; moved here so every actionable control lives one click in from the addon list.
+  - **Test** button — calls `PrettyChat:Test()`, which iterates EVERY format string regardless of enable toggles (so the preview works even when the addon is disabled), substitutes generic sample arguments for each `%[...]type` conversion, and prints the rendered result to `DEFAULT_CHAT_FRAME` so the user sees what each format looks like. If the addon is currently disabled, a `[PC]` notice is emitted alongside the header. Header and footer lines carry the `[PC]` prefix to bracket the test block; sample lines themselves are emitted *without* the prefix so each rendered preview looks identical to a real loot/currency/XP chat message. The footer reports the count of strings shown.
+  - **Reset All to Defaults** button — was previously on the parent page; moved here so every actionable control lives one click in from the addon list. Renders an AceConfig confirm popup before clearing.
 - The parent page ("Ka0s Pretty Chat") hosts only a description — no actionable buttons. Sub-categories own their own controls.
 - `ns.Schema.CATEGORY_ORDER` (defined in `Schema.lua`, imported by `Config.lua`) controls the display order of the sub-pages and the iteration order in `/pc list` — iterating `pairs(PrettyChatDefaults)` directly would give a non-deterministic order, so the list is explicit.
 - `PrettyChat.subFrames[category]` stores the frame returned by `AddToBlizOptions` for each sub-page (currently unused, available for `/pc config <Category>` direct-jump in future).
@@ -140,11 +143,11 @@ Public API:
   - Row 4: `_original` (rel 0.5) + *(globalName)* (rel 0.5) — paired edit boxes for direct comparison
   - Row 5: `_preview_label` (full)
   - Row 6: `_preview` (full)
-- Per-category controls: enable/disable toggle and reset button at the top of each sub-page
+- Per-category controls: enable/disable toggle and reset button at the top of each sub-page. The reset button uses an AceConfig confirm popup (`Reset all <Category> strings to defaults?`) before clearing.
 - Key functions in `PrettyChat.lua`:
   - `ns.Print(msg)` — namespace-level helper that writes to `DEFAULT_CHAT_FRAME` with the cyan `[PC]` prefix; used by every file in the addon
   - `OnSlashCommand(input)` — slash dispatcher; iterates the local `COMMANDS` table and calls the matching entry's `fn(self, rest)`. Falls back to `printHelp` on empty/unknown.
-  - `printHelp(self)` — emits the slash-command help via `ns.Print`, generated from the `COMMANDS` table so help and dispatch never drift
+  - `printHelp(self)` — emits the slash-command help via `ns.Print`, generated from the `COMMANDS` table so help and dispatch never drift. Header line includes the addon version (`v<VERSION>`) read once at file load via `C_AddOns.GetAddOnMetadata(addonName, "Version")`
   - `listSettings(self, rest)` / `getSetting(self, rest)` / `setSetting(self, rest)` / `runReset(self, rest)` / `runResetAll(self)` — schema-driven slash command bodies. All read/write via `ns.Schema`.
   - `GetStringValue(category, globalName)` — returns user override or default (read by `ns.Schema` row's `get()`)
   - `IsCategoryEnabled(category)` — returns user override or default enabled state
@@ -182,12 +185,12 @@ Only user-modified values are stored; `nil` means "use default" (true for `enabl
 |-------------|---------|------------------------------------------------|
 | Loot        | 19      | `LOOT_ITEM`, `LOOT_ITEM_SELF`, bonus rolls     |
 | Currency    | 4       | `CURRENCY_GAINED`, `CURRENCY_LOST_FROM_DEATH`   |
-| Money       | 7       | `YOU_LOOT_MONEY`, `LOOT_MONEY_SPLIT`            |
+| Money       | 8       | `YOU_LOOT_MONEY`, `LOOT_MONEY_SPLIT`, `ERR_QUEST_REWARD_MONEY_S` |
 | Reputation  | 14      | `FACTION_STANDING_INCREASED`, standing changes  |
 | Experience  | 20      | `COMBATLOG_XPGAIN_*` (rested, group, raid, etc)|
 | Honor       | 6       | `COMBATLOG_HONORGAIN`, `COMBATLOG_HONORAWARD`   |
 | Tradeskill  | 8       | `CREATED_ITEM`, `OPEN_LOCK_SELF`                |
-| Misc        | 3       | `ERR_QUEST_REWARD_EXP_I`, `ERR_ZONE_EXPLORED_XP`|
+| Misc        | 2       | `ERR_QUEST_REWARD_EXP_I`, `ERR_ZONE_EXPLORED_XP`|
 
 ## Color Convention
 
@@ -209,12 +212,19 @@ Only user-modified values are stored; `nil` means "use default" (true for `enabl
 
 ## GlobalStrings Sub-Addon
 
-`GlobalStrings/` is a LoadOnDemand sub-addon containing a searchable copy of Blizzard's `GlobalStrings.lua` (~22,879 entries), split into 10 chunk files by first letter of key.
+`GlobalStrings/` holds a searchable copy of Blizzard's `GlobalStrings.lua` (~22,879 entries), split into 10 chunk files by first letter of key. The chunks populate a single global table, `PrettyChatGlobalStrings`.
 
-- **Source file**: `GlobalStrings/GlobalStrings.lua` — the full Blizzard reference (not loaded by any TOC)
-- **Chunk files**: `GlobalStrings/GlobalStrings_001.lua` through `GlobalStrings_010.lua` — populated into `PrettyChatGlobalStrings` table
-- **Splitter script**: `GlobalStrings/split_globalstrings.py` — re-run after updating the source file (e.g., new WoW patch)
-- **Search API**: `GlobalStringSearch.lua` (loaded with main addon) provides `EnsureLoaded()`, `FindByKey(pattern)`, `FindByValue(pattern)`, and `Find(pattern)` methods via `ns.GlobalStringSearch`. Internally uses a shared `Search(predicate, limit)` helper to eliminate duplication
+**Two TOCs reference these chunks** — this is intentional, but worth flagging because the historical name "LoadOnDemand sub-addon" is misleading about runtime behavior:
+
+- **`PrettyChat.toc`** loads `GlobalStrings_001.lua` … `GlobalStrings_010.lua` *eagerly at addon startup* (load order: after `Libs/`, before `Defaults.lua`). This populates `PrettyChatGlobalStrings` so `Config.lua`'s "Original Format String" disabled input can resolve every key without an explicit load step.
+- **`GlobalStrings/GlobalStrings.toc`** is a separate `LoadOnDemand: 1` sub-addon (`PrettyChat - GlobalStrings`, version `1.1.0`) that *also* loads the same chunks. `GlobalStringSearch.lua`'s `EnsureLoaded()` calls `C_AddOns.LoadAddOn("GlobalStrings")`, but because the chunks are already loaded by the main TOC, the call is effectively idempotent (Blizzard returns the addon as already-loaded).
+
+The redundant load path exists for historical reasons: the sub-addon was originally LoD-only, then the main TOC was given the chunks directly when the Settings panel started rendering originals at panel-open time. The LoD packaging now mostly serves as a guard for a future world where the eager load is removed.
+
+- **Source file**: `GlobalStrings/GlobalStrings.lua` — the full Blizzard reference (~1.6 MB), not loaded by any TOC; only used as input to `split_globalstrings.py`
+- **Chunk files**: `GlobalStrings/GlobalStrings_001.lua` through `GlobalStrings_010.lua` — emit `PrettyChatGlobalStrings["KEY"] = "value"` assignments
+- **Splitter script**: `GlobalStrings/split_globalstrings.py` — re-run after updating the source file (e.g., new WoW patch). Computes 10 balanced groups by letter, cleans up old chunk files, and rewrites `GlobalStrings.toc`'s file list
+- **Search API**: `GlobalStringSearch.lua` (loaded with main addon) exposes `EnsureLoaded()`, `FindByKey(pattern)`, `FindByValue(pattern)`, and `Find(pattern)` via `ns.GlobalStringSearch`. Internally uses a shared `Search(predicate, limit)` helper. The API is *not currently consumed* by any slash command or panel widget — it's available for future debug tooling. `Config.lua` reads `_G.PrettyChatGlobalStrings` directly rather than going through this API.
 
 ## Development Notes
 
