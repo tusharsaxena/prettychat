@@ -68,26 +68,34 @@ The General sub-page does not show a `Defaults` button in the header — the in-
 
 The header carries a **Defaults** button on the right that calls `PrettyChat:ResetCategory(category)` directly — no popup confirm. Per-row reset is preserved via the per-string `Reset` button (see below), and the master `Reset all to defaults` on General has the popup, so a per-category Defaults click is a single recoverable action.
 
-## Per-string row
+## Per-string block
 
-Each format string renders as four logical rows inside the category panel:
+Each format string renders as a `Heading` + a 3-row × 2-column grid inside the category panel:
 
-| Row | Contents | Layout |
-|-----|----------|--------|
-| 1 | `[Enable]` checkbox + visible label (gold, `GameFontNormal`) | Flow, 25% / 74% |
-| 2 | `GLOBALNAME` caption (grey) | Full width |
-| 3 | Original format (disabled `EditBox`) \| New format (editable `EditBox`) | Flow, 50% / 50% |
-| 4 | Rendered sample (calls `ns.RenderSample`) + `[Reset]` button | Flow, 78% / 20% |
+```
+─── strData.label ───                          ← AceGUI Heading, full width
+[Enable]            | Original [disabled EditBox]
+GLOBALNAME (grey)   | New      [editable EditBox]
+[Reset]             | Preview  [disabled EditBox]
+```
 
-State derived per row in the row's `refresh()` closure (run on first build and on every `Schema.NotifyPanelChange`):
+| Row | Left (40%) | Right (60%) |
+|-----|------------|-------------|
+| Heading | Friendly label, `GameFontNormalLarge` flanked by side dividers | — |
+| 1 | `[Enable]` checkbox | Original format `EditBox` (disabled, `:SetLabel("Original")`) |
+| 2 | `GLOBALNAME` caption (grey) | New format `EditBox` (editable, `:SetLabel("New")`, commits on Enter) |
+| 3 | `[Reset]` button | Preview `EditBox` (disabled, `:SetLabel("Preview")`, `ns.RenderSample` output) |
+
+Each row is its own AceGUI `SimpleGroup` with `Flow` layout; the left child uses `:SetRelativeWidth(LEFT_W)` (`0.4`) and the right uses `:SetRelativeWidth(RIGHT_W)` (`0.6`), so the two columns align across all three rows. The right-column EditBox labels (`Original` / `New` / `Preview`) sit above each input via AceGUI's built-in label slot — left-column widgets vertically align with the EditBox itself, not the label.
+
+State derived per block in the block's `refresh()` closure (run on first build and on every `Schema.NotifyPanelChange`):
 
 - `[Enable]` checkbox: `enable:SetValue(strEnabled)` and disabled when master OR category is off.
 - New format `EditBox`: `:SetText` from the schema; disabled when master, category, or per-string is off.
-- Sample Label:
-  - When current value `==` default — render with sample args via `ns.RenderSample`, dim with grey color, hide the Reset button (no diff to revert).
-  - When value `~=` default — render with sample args, no dimming, show the Reset button. On `string.format` error, render the error message in red.
+- Preview `EditBox`: always shows `ns.RenderSample(current)` — the rendered sample with sample args substituted in. The backing `InputBoxTemplate` FontString renders WoW `|c…|r` color escapes, so the preview shows with its formatting intact. On `string.format` failure, the error message is shown instead.
+- `[Reset]` button: always visible. Clicking when the value already equals the default is a harmless no-op (the schema's auto-clear-on-default short-circuits to nil).
 
-The new-format `EditBox` commits on `OnEnterPressed` (Enter or focus loss) through `ns.Schema.Set(formatPath, …)` after un-escaping `||` → `|`. The schema runs `PrettyChat:ApplyStrings()` and calls `Schema.NotifyPanelChange(category)`, which dispatches to the category's refresher (see below).
+The new-format `EditBox` commits on `OnEnterPressed` through `ns.Schema.Set(formatPath, …)` after un-escaping `||` → `|`. The schema runs `PrettyChat:ApplyStrings()` and calls `Schema.NotifyPanelChange(category)`, which dispatches to the category's refresher (see below).
 
 ## Edit-box pipe escaping
 

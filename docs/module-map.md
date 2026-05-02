@@ -51,7 +51,7 @@ The addon object itself (`PrettyChat`, an `AceAddon-3.0` object) is **not** publ
 -- Lifecycle
 PrettyChat:OnInitialize()              -- AceDB, slash registration ("/pc" + "/prettychat")
 PrettyChat:OnEnable()                  -- snapshot Blizzard originals → ApplyStrings
-PrettyChat:OpenConfig()                -- Settings.OpenToCategory(self.optionsCategoryID)
+PrettyChat:OpenConfig()                -- Settings.OpenToCategory(self.optionsCategoryID); then expandMainCategory(self.optionsCategory) walks SettingsPanel:GetCategoryList():GetCategoryEntry(cat):SetExpanded(true) in pcall to unfold the sub-tree
 
 -- Override pipeline (also see override-pipeline.md)
 PrettyChat:ApplyStrings()              -- writes enabled overrides to _G; restores originals for disabled ones

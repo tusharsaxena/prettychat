@@ -34,11 +34,30 @@ function PrettyChat:OnEnable()
     self:ApplyStrings()
 end
 
+-- Expand the parent category in the Blizzard Settings left tree so
+-- every sub-page is visible. Wrapped in pcall: SettingsPanel internals
+-- (CategoryList, GetCategoryEntry, SetExpanded) are private API and
+-- could shift between patches; if any call goes missing we just open
+-- the panel without forcing expansion rather than erroring out.
+local function expandMainCategory(cat)
+    if not (cat and SettingsPanel) then return end
+    pcall(function()
+        local list = SettingsPanel.GetCategoryList
+            and SettingsPanel:GetCategoryList()
+            or SettingsPanel.CategoryList
+        if not (list and list.GetCategoryEntry) then return end
+        local entry = list:GetCategoryEntry(cat)
+        if entry and entry.SetExpanded then
+            entry:SetExpanded(true)
+        end
+    end)
+end
+
 function PrettyChat:OpenConfig()
     if not (Settings and Settings.OpenToCategory) then return end
-    if self.optionsCategoryID then
-        Settings.OpenToCategory(self.optionsCategoryID)
-    end
+    if not self.optionsCategoryID then return end
+    Settings.OpenToCategory(self.optionsCategoryID)
+    expandMainCategory(self.optionsCategory)
 end
 
 function PrettyChat:GetStringValue(category, globalName)

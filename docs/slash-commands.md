@@ -32,7 +32,7 @@ Unknown commands and the empty input fall back to `printHelp`.
 | Command | Effect |
 |---------|--------|
 | `/pc` / `/pc help` | Print the help index via `ns.Print`. Header line includes the addon version (`v<VERSION>`, read from TOC `## Version:` at file load via `C_AddOns.GetAddOnMetadata`). |
-| `/pc config` | Open the Blizzard settings panel to the parent page. **Refuses during combat** (`InCombatLockdown()`) — Blizzard's category-switch is protected and would taint the panel. Prints a notice and stops if combat is active. |
+| `/pc config` | Open the Blizzard settings panel to the parent page and auto-expand the addon's sub-category tree so every per-category sub-page (Loot, Currency, …) is visible in the left rail without clicking the disclosure arrow. **Refuses during combat** (`InCombatLockdown()`) — Blizzard's category-switch is protected and would taint the panel. Prints a notice and stops if combat is active. |
 | `/pc list` | List every setting and its current value, grouped by category (~170 lines). With ~170 rows the output is long, but it's the only way the slash UI reaches parity with the panel (which exposes a toggle and a format edit-box per string). |
 | `/pc list <Category>` | Filter to one category. Case-insensitive (`/pc list loot` works). Prints the category toggle + every per-string `.enabled` and `.format` row. Unknown categories print the valid list. |
 | `/pc get <path>` | Print one row's current value (e.g. `/pc get Loot.LOOT_ITEM_SELF.enabled` or `/pc get General.enabled`). |

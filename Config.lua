@@ -336,99 +336,111 @@ local function buildGeneralBody(ctx)
 end
 
 -- ---------------------------------------------------------------------
--- Per-string row.
---   row 1: [Enable]  <Visible label, gold>
---   row 2: GLOBALNAME caption (small grey)
---   row 3: [original — disabled] | [new — editable]   (50/50)
---   row 4: rendered sample (italic-grey when matches default;
---          red when string.format errors) + [Reset] button on the
---          right, shown only when value diverges from default.
+-- Per-string block.
+--   ─── <strData.label> ───                          (Heading, full width)
+--   [Enable]              | Original  [disabled EditBox]
+--   GLOBALNAME (grey)     | New       [editable EditBox]
+--   [Reset]               | Preview   [disabled EditBox, color rendered]
+--
+-- Two-column 40/60 split. Reset button is always visible (the click
+-- is a no-op when value already equals default). The Preview EditBox
+-- uses InputBoxTemplate, whose backing FontString renders WoW `|c…|r`
+-- color escapes, so the rendered sample shows with its formatting
+-- intact.
 -- ---------------------------------------------------------------------
+
+local LEFT_W  = 0.4
+local RIGHT_W = 0.6
 
 local function buildStringRow(scroll, category, globalName, strData, refreshers)
     local enabledPath = category .. "." .. globalName .. ".enabled"
     local formatPath  = category .. "." .. globalName .. ".format"
 
-    -- Row 1: Enable + label
-    local headerRow = AceGUI:Create("SimpleGroup")
-    headerRow:SetLayout("Flow")
-    headerRow:SetFullWidth(true)
+    -- Heading: friendly label as section divider for this string
+    local heading = AceGUI:Create("Heading")
+    heading:SetText(strData.label)
+    heading:SetFullWidth(true)
+    heading:SetHeight(Const.SECTION_HEADING_H)
+    if heading.label and heading.label.SetFontObject and _G.GameFontNormalLarge then
+        heading.label:SetFontObject(_G.GameFontNormalLarge)
+    end
+    scroll:AddChild(heading)
+
+    -- Row 1: Enable | Original (disabled)
+    local row1 = AceGUI:Create("SimpleGroup")
+    row1:SetLayout("Flow")
+    row1:SetFullWidth(true)
 
     local enable = AceGUI:Create("CheckBox")
     enable:SetLabel("Enable")
-    enable:SetRelativeWidth(0.25)
+    enable:SetRelativeWidth(LEFT_W)
     enable:SetCallback("OnValueChanged", function(_, _, value)
         ns.Schema.Set(enabledPath, value and true or false)
     end)
     attachTooltip(enable, "Enable",
         "Use the rewritten format for this message. When unchecked, Blizzard's original is used.")
-    headerRow:AddChild(enable)
-
-    local titleLbl = AceGUI:Create("Label")
-    titleLbl:SetRelativeWidth(0.74)
-    titleLbl:SetText(GOLD .. strData.label .. RESET)
-    if titleLbl.label and titleLbl.label.SetFontObject and _G.GameFontNormal then
-        titleLbl.label:SetFontObject(_G.GameFontNormal)
-    end
-    headerRow:AddChild(titleLbl)
-    scroll:AddChild(headerRow)
-
-    -- Row 2: GLOBALNAME caption
-    local captionLbl = AceGUI:Create("Label")
-    captionLbl:SetFullWidth(true)
-    captionLbl:SetText(GREY .. globalName .. RESET)
-    scroll:AddChild(captionLbl)
-
-    -- Row 3: original | new
-    local editRow = AceGUI:Create("SimpleGroup")
-    editRow:SetLayout("Flow")
-    editRow:SetFullWidth(true)
+    row1:AddChild(enable)
 
     local origInput = AceGUI:Create("EditBox")
-    origInput:SetLabel("")
-    origInput:SetRelativeWidth(0.5)
+    origInput:SetLabel("Original")
+    origInput:SetRelativeWidth(RIGHT_W)
     origInput:SetDisabled(true)
     local origValue = (PrettyChatGlobalStrings and PrettyChatGlobalStrings[globalName])
                      or "(original not available)"
     origInput:SetText(origValue:gsub("|", "||"))
     attachTooltip(origInput, "Original Format String",
         "Blizzard's original format. Read-only.")
-    editRow:AddChild(origInput)
+    row1:AddChild(origInput)
+    scroll:AddChild(row1)
+
+    -- Row 2: GLOBALNAME caption | New (editable)
+    local row2 = AceGUI:Create("SimpleGroup")
+    row2:SetLayout("Flow")
+    row2:SetFullWidth(true)
+
+    local captionLbl = AceGUI:Create("Label")
+    captionLbl:SetRelativeWidth(LEFT_W)
+    captionLbl:SetText(GREY .. globalName .. RESET)
+    row2:AddChild(captionLbl)
 
     local newInput = AceGUI:Create("EditBox")
-    newInput:SetLabel("")
-    newInput:SetRelativeWidth(0.5)
+    newInput:SetLabel("New")
+    newInput:SetRelativeWidth(RIGHT_W)
     newInput:SetCallback("OnEnterPressed", function(_, _, value)
         ns.Schema.Set(formatPath, (value or ""):gsub("||", "|"))
     end)
     attachTooltip(newInput, "New Format String",
         "Your replacement. Type `||` for a literal `|` (color codes use this).")
-    editRow:AddChild(newInput)
-    scroll:AddChild(editRow)
+    row2:AddChild(newInput)
+    scroll:AddChild(row2)
 
-    -- Row 4: rendered sample + reset button
-    local sampleRow = AceGUI:Create("SimpleGroup")
-    sampleRow:SetLayout("Flow")
-    sampleRow:SetFullWidth(true)
-
-    local sampleLbl = AceGUI:Create("Label")
-    sampleLbl:SetRelativeWidth(0.78)
-    sampleRow:AddChild(sampleLbl)
+    -- Row 3: Reset | Preview (disabled, rendered with color escapes)
+    local row3 = AceGUI:Create("SimpleGroup")
+    row3:SetLayout("Flow")
+    row3:SetFullWidth(true)
 
     local resetBtn = AceGUI:Create("Button")
     resetBtn:SetText("Reset")
-    resetBtn:SetRelativeWidth(0.2)
+    resetBtn:SetRelativeWidth(LEFT_W)
     resetBtn:SetCallback("OnClick", function()
         ns.Schema.Set(formatPath, strData.default)
     end)
     attachTooltip(resetBtn, "Reset",
         "Restore this string to its default.")
-    sampleRow:AddChild(resetBtn)
-    scroll:AddChild(sampleRow)
+    row3:AddChild(resetBtn)
+
+    local previewInput = AceGUI:Create("EditBox")
+    previewInput:SetLabel("Preview")
+    previewInput:SetRelativeWidth(RIGHT_W)
+    previewInput:SetDisabled(true)
+    attachTooltip(previewInput, "Preview",
+        "The current format rendered with sample arguments.")
+    row3:AddChild(previewInput)
+    scroll:AddChild(row3)
 
     addSpacer(scroll, Const.STRING_VSPACER)
 
-    -- Refresh closure: re-syncs every widget in this row from the DB.
+    -- Refresh closure: re-syncs every widget in this block from the DB.
     -- Called on category-level changes (Enable toggled, Defaults pressed,
     -- /pc set, /pc reset). Programmatic SetValue/SetText on AceGUI
     -- widgets do NOT re-fire the user callbacks, so this is safe to call
@@ -444,19 +456,8 @@ local function buildStringRow(scroll, category, globalName, strData, refreshers)
         newInput:SetText((current or ""):gsub("|", "||"))
         newInput:SetDisabled(not (addonEnabled and catEnabled and strEnabled))
 
-        if current ~= strData.default then
-            local rendered, err = ns.RenderSample(current)
-            if rendered then
-                sampleLbl:SetText(rendered)
-            else
-                sampleLbl:SetText(RED .. tostring(err) .. RESET)
-            end
-            resetBtn.frame:Show()
-        else
-            local rendered = ns.RenderSample(current)
-            sampleLbl:SetText(GREY .. (rendered or "") .. RESET)
-            resetBtn.frame:Hide()
-        end
+        local rendered, err = ns.RenderSample(current)
+        previewInput:SetText(rendered or tostring(err))
     end
 
     refreshers[#refreshers + 1] = refresh

@@ -53,7 +53,7 @@ PrettyChat appears in the Blizzard Settings panel under **Ka0s Pretty Chat**. Th
 *   **Tradeskill** — 8 strings for crafted-item creation and lock opening.
 *   **Misc** — 2 catch-all strings (quest reward XP, zone exploration).
 
-Each category sub-page lists every format string it owns. A row contains: an **Enable** checkbox + visible label, the GlobalString key name caption (e.g. `LOOT_ITEM_SELF`), a side-by-side pair of edit boxes showing the original Blizzard format string and the editable PrettyChat replacement, and — whenever your value differs from the shipped default — a rendered sample line beneath plus a per-string **Reset** button to revert that one string to its default. Each category page also has a **Defaults** button in the page header that resets every string in that category. Disabled strings revert to Blizzard's original at runtime.
+Each category sub-page lists every format string it owns. Each string is laid out as a labeled section heading (the friendly name, e.g. "Battle Pet Loot") followed by a 40/60 two-column grid: left column has an **Enable** checkbox, the GlobalString key caption (e.g. `LOOT_ITEM_SELF`), and a per-string **Reset** button; right column has labeled edit boxes for the **Original** Blizzard format (read-only), the editable **New** PrettyChat replacement, and a **Preview** that always reflects the saved value with sample arguments substituted in. Each category page also has a **Defaults** button in the page header that resets every string in that category. Disabled strings revert to Blizzard's original at runtime.
 
 ## Notes
 
