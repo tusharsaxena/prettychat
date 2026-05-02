@@ -40,12 +40,12 @@ _**With Pretty Chat**_
 
 ### Settings panel
 
-From the settings panel you can:
+PrettyChat appears in the Blizzard settings panel under **Ka0s Pretty Chat**. Each category (Loot, Currency, Money, Reputation, Experience, Honor, Tradeskill, Misc) is a sibling sub-page in the addon list — there are no tabs in the right pane, so each category gets the full pane width to itself. From the settings panel you can:
 
-*   **Enable/disable categories** — Toggle entire groups of format strings (Loot, Currency, Money, Reputation, Experience, Honor, Tradeskill, Misc) on or off.
+*   **Enable/disable categories** — Toggle entire groups of format strings on or off from the per-category sub-page.
 *   **Enable/disable individual strings** — Each format string has its own toggle, so you can selectively override only the strings you want. Disabled strings revert to Blizzard defaults.
-*   **Edit individual strings** — Each format string is shown with raw WoW escape codes so you can tweak colors and labels directly. A preview edit box beneath each input shows the current value.
-*   **Reset to defaults** — Reset a single category or all categories back to the built-in PrettyChat formatting at any time.
+*   **Edit individual strings** — Each row shows the original Blizzard format string and the new PrettyChat string side-by-side for direct comparison, both with raw WoW escape codes so you can tweak colors and labels directly. A full-width preview edit box beneath each row shows the rendered current value.
+*   **Reset to defaults** — Reset a single category from its sub-page, or reset everything from the parent page.
 
 Settings are saved per-character profile via AceDB.
 
@@ -58,6 +58,11 @@ Pretty Chat does not do any sort of parsing of chat messages, instead it overrid
 Please report any issues in the [Issues](https://github.com/tusharsaxena/prettychat/issues) tab, not as a comment!
 
 ## Version History
+
+**_1.3.0_**
+
+*   Settings panel restructured — categories are now sibling sub-pages in the Blizzard addon list (no more tab strip in the right pane), giving each category the full pane width
+*   Per-string layout reflowed — Original and New format string edit boxes now sit side-by-side for direct comparison
 
 **_1.2.0_**
 

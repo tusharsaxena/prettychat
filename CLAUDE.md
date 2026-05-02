@@ -59,10 +59,13 @@ Bundled Ace3 libraries (in `Libs/`):
 
 - **Slash commands** (both `/pc` and `/prettychat` are aliases of the same handler):
   - `/pc` (no args) — prints the help text via `ns.Print`
-  - `/pc config` — opens the Blizzard settings panel to the PrettyChat page
+  - `/pc config` — opens the Blizzard settings panel to the PrettyChat parent page
   - any other arg falls through to help
-- AceConfig options table is built dynamically per category from `PrettyChatDefaults`
-- Each format string is displayed as a **string set** with the following layout (13 elements per set, increment = 13):
+- The settings UI uses **one Blizzard sub-page per category** — not tabs. Each category (Loot, Currency, Money, Reputation, Experience, Honor, Tradeskill, Misc) is registered as its own AceConfig options table and added to the Blizzard panel via `AceConfigDialog:AddToBlizOptions(appName, displayName, PARENT_TITLE)`. The third argument nests the entry under the parent in the addon list, so each category renders as a sibling row beneath "Ka0s Pretty Chat" with the full right-pane width to itself (no tab strip).
+- The parent page ("Ka0s Pretty Chat") hosts only a description and the "Reset All to Defaults" button.
+- `CATEGORY_ORDER` (in `Config.lua`) controls the display order of the sub-pages — iterating `pairs(PrettyChatDefaults)` directly would give a non-deterministic order, so the list is explicit.
+- `PrettyChat.subFrames[category]` stores the frame returned by `AddToBlizOptions` for each sub-page (currently unused, available for `/pc config <Category>` direct-jump in future).
+- Each format string is displayed as a **string set** with the following layout (12 elements per set, increment = 12):
 
   | Order | Key Suffix | Type | Width | Font Size | Content |
   |-------|-----------|------|-------|-----------|---------|
@@ -70,19 +73,23 @@ Bundled Ace3 libraries (in `Libs/`):
   | i+1 | `_toggle` | toggle | 0.4 | — | "Enable" checkbox |
   | i+2 | `_toggle_label` | description | 2.0 | large | Gold `strData.label` |
   | i+3 | `_toggle_globalname` | description | full | small | White `globalName` |
-  | i+4 | `_original_spacer` | description | full | — | `"\n"` spacer |
-  | i+5 | `_original_label` | description | full | medium | Gold "Original Format String" |
-  | i+6 | `_original` | input | full | — | Disabled edit box — original Blizzard string |
-  | i+7 | `_format_label` | description | full | medium | Gold "New Format String" |
-  | i+8 | *(globalName)* | input | full | — | Editable format box (escapes `\|` → `\|\|` for raw editing; unescapes on save) |
-  | i+9 | `_preview_label` | description | full | medium | Gold "Preview" |
-  | i+10 | `_preview` | input | full | — | Disabled edit box — rendered preview |
-  | i+11 | `_spacer_bottom` | description | full | — | `"\n"` spacer |
-  | i+12 | `_hr` | header | — | — | Horizontal rule separator |
+  | i+4 | `_original_label` | description | relative 0.5 | medium | Gold "Original Format String" |
+  | i+5 | `_format_label` | description | relative 0.5 | medium | Gold "New Format String" |
+  | i+6 | `_original` | input | relative 0.5 | — | Disabled edit box — original Blizzard string |
+  | i+7 | *(globalName)* | input | relative 0.5 | — | Editable format box (escapes `\|` → `\|\|` for raw editing; unescapes on save) |
+  | i+8 | `_preview_label` | description | full | medium | Gold "Preview" |
+  | i+9 | `_preview` | input | full | — | Disabled edit box — rendered preview |
+  | i+10 | `_spacer_bottom` | description | full | — | `"\n"` spacer |
+  | i+11 | `_hr` | header | — | — | Horizontal rule separator |
 
-  - Row 1: `_toggle` (0.4) + `_toggle_label` (2.0) sit on the same line
+  - "Width" semantics in AceConfig: a numeric `width = N` is `N × 170 px` **absolute**. A percentage of the row requires `width = "relative", relWidth = N` — that's how the side-by-side rows are wired.
+  - Row 1: `_toggle` (0.4 × 170 = 68 px) + `_toggle_label` (2.0 × 170 = 340 px) sit on the same line
   - Row 2: `_toggle_globalname` (full) on its own line
-- Per-category controls: enable/disable toggle and reset button at the top of each tab
+  - Row 3: `_original_label` (rel 0.5) + `_format_label` (rel 0.5) — paired headers
+  - Row 4: `_original` (rel 0.5) + *(globalName)* (rel 0.5) — paired edit boxes for direct comparison
+  - Row 5: `_preview_label` (full)
+  - Row 6: `_preview` (full)
+- Per-category controls: enable/disable toggle and reset button at the top of each sub-page
 - Key functions in `PrettyChat.lua`:
   - `ns.Print(msg)` — namespace-level helper that writes to `DEFAULT_CHAT_FRAME` with the cyan `[PC]` prefix; used by every file in the addon
   - `HandleSlashCommand(input)` — slash dispatcher; routes `config` to `OpenConfig()` and everything else to `PrintHelp()`
@@ -96,10 +103,11 @@ Bundled Ace3 libraries (in `Libs/`):
   - `ResetAll()` — clears all saved overrides
 - Config.lua helpers:
   - Color constants: `GOLD`, `WHITE`, `RESET` — avoid repeated inline color escape strings
-  - `MakeSpacer(order)` — returns a spacer description widget
-  - `MakeLabel(order, text, fontSize)` — returns a label description widget
-  - `MakeDisabledInput(order, getter)` — returns a disabled input widget
-  - `BuildStringEntry(group, globalName, strData, category, i)` — populates all 13 widgets for one string set
+  - `MakeSpacer(order, width?)` — returns a spacer description widget (defaults to full width)
+  - `MakeLabel(order, text, fontSize?, width?)` — returns a label description widget (defaults to full width)
+  - `MakeDisabledInput(order, getter, width?)` — returns a disabled input widget (defaults to full width)
+  - `BuildStringEntry(group, globalName, strData, category, i)` — populates all 12 widgets for one string set
+  - `BuildCategoryOptions(category, catData)` — returns the root options table for one category sub-page (no nesting under `args[category]`)
 
 ## Database Structure
 
@@ -155,7 +163,7 @@ Only user-modified values are stored; `nil` means "use default from `PrettyChatD
 
 ## Development Notes
 
-- **Version**: `1.2.0`
+- **Version**: `1.3.0`
 - **Interface version**: `120000,120001,120005` (The War Within / Midnight / Retail). Classic/Classic Era not yet supported.
 - **No build system** — Lua files are loaded directly by WoW in the order specified in the TOC.
 - `LOOT_ITEM_CREATED_SELF` and `LOOT_ITEM_CREATED_SELF_MULTIPLE` appear in both Loot and Tradeskill categories in `Defaults.lua`. Since `PrettyChatDefaults` is a Lua table, only one category will hold each key — whichever is iterated last by `ApplyStrings()` wins.
