@@ -76,6 +76,15 @@ local function expandMainCategory(cat)
 end
 
 function PrettyChat:OpenConfig()
+    -- Combat guard lives here (not just in the slash dispatcher) so any
+    -- programmatic caller — other addons, a /run script, future internal
+    -- code paths — is also gated. Settings.OpenToCategory triggers the
+    -- protected category-switch code; calling it under combat lockdown
+    -- taints the panel for the rest of the session.
+    if InCombatLockdown and InCombatLockdown() then
+        ns.Print(Color.grey .. "cannot open settings during combat — Blizzard's category-switch is protected" .. Color.reset)
+        return
+    end
     if not (Settings and Settings.OpenToCategory) then return end
     if not self.optionsCategoryID then return end
     local opened = Settings.OpenToCategory(self.optionsCategoryID)
@@ -354,13 +363,7 @@ local COMMANDS = {
     {"help",     "List available commands",
         function(self) printHelp(self) end},
     {"config",   "Open the settings panel",
-        function(self)
-            if InCombatLockdown and InCombatLockdown() then
-                ns.Print(note("cannot open settings during combat"))
-                return
-            end
-            self:OpenConfig()
-        end},
+        function(self) self:OpenConfig() end},
     {"list",     "List settings — `/pc list [<Category> | category | formatstring]`",
         function(self, rest) listSettings(self, rest) end},
     {"get",      "Print a setting's current value — `/pc get <path>`",
