@@ -240,9 +240,15 @@ end
 -- / per-category / per-string toggles. The toggles ONLY affect what
 -- ApplyStrings writes to live chat; this preview is for the user.
 --
+-- `filter` is nil (= every string) or one of:
+--   { kind = "category",     value = <canonical category name> }
+--   { kind = "formatstring", value = <UPPERCASE_GLOBAL_NAME> }
+-- The slash dispatch (runTest) is responsible for canonicalizing the
+-- value before calling — Test only does an equality check.
+--
 -- Every line carries the [PC] prefix so the report stays visually
 -- distinct from real chat traffic interleaved with it.
-function PrettyChat:Test()
+function PrettyChat:Test(filter)
     DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. note("sample of every format string (preview ignores enable toggles):"))
     if not self:IsAddonEnabled() then
         DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. note("(addon is currently disabled — these formats aren't being applied to live chat)"))
@@ -259,38 +265,51 @@ function PrettyChat:Test()
     end
 
     local printed, errored = 0, 0
+    local emittedAny = false
     for _, category in ipairs(ns.Schema.CATEGORY_ORDER) do
-        local catData = PrettyChatDefaults[category]
-        if catData and catData.strings and next(catData.strings) then
-            DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. Color.gold .. "Category: " .. category .. Color.reset)
-            DEFAULT_CHAT_FRAME:AddMessage(PREFIX)
+        if not filter or filter.kind ~= "category" or filter.value == category then
+            local catData = PrettyChatDefaults[category]
+            if catData and catData.strings and next(catData.strings) then
+                local sortedNames = {}
+                for globalName in pairs(catData.strings) do
+                    if not filter or filter.kind ~= "formatstring" or filter.value == globalName then
+                        sortedNames[#sortedNames + 1] = globalName
+                    end
+                end
+                table.sort(sortedNames)
 
-            local sortedNames = {}
-            for globalName in pairs(catData.strings) do
-                sortedNames[#sortedNames + 1] = globalName
-            end
-            table.sort(sortedNames)
+                if #sortedNames > 0 then
+                    emittedAny = true
+                    DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. Color.gold .. "Category: " .. category .. Color.reset)
+                    DEFAULT_CHAT_FRAME:AddMessage(PREFIX)
 
-            for _, globalName in ipairs(sortedNames) do
-                DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. labelName .. globalName)
+                    for _, globalName in ipairs(sortedNames) do
+                        DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. labelName .. globalName)
 
-                local origFmt = (self.originalStrings and self.originalStrings[globalName]) or _G[globalName]
-                local origLine, origErr = renderOrError(origFmt)
-                DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. labelOriginal .. origLine)
+                        local origFmt = (self.originalStrings and self.originalStrings[globalName]) or _G[globalName]
+                        local origLine, origErr = renderOrError(origFmt)
+                        DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. labelOriginal .. origLine)
 
-                local newFmt = self:GetStringValue(category, globalName)
-                local newLine, newErr = renderOrError(newFmt)
-                DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. labelFormatted .. newLine)
+                        local newFmt = self:GetStringValue(category, globalName)
+                        local newLine, newErr = renderOrError(newFmt)
+                        DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. labelFormatted .. newLine)
 
-                DEFAULT_CHAT_FRAME:AddMessage(PREFIX)
+                        DEFAULT_CHAT_FRAME:AddMessage(PREFIX)
 
-                if newErr or origErr then
-                    errored = errored + 1
-                else
-                    printed = printed + 1
+                        if newErr or origErr then
+                            errored = errored + 1
+                        else
+                            printed = printed + 1
+                        end
+                    end
                 end
             end
         end
+    end
+
+    if not emittedAny then
+        DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. note("(no matching strings)"))
+        return
     end
 
     local footer = ("end of test output (%d %s shown"):format(
@@ -329,7 +348,7 @@ local function schemaReady()
     return true
 end
 
-local printHelp, listSettings, getSetting, setSetting, runReset, runResetAll
+local printHelp, listSettings, getSetting, setSetting, runReset, runResetAll, runTest
 
 local COMMANDS = {
     {"help",     "List available commands",
@@ -342,7 +361,7 @@ local COMMANDS = {
             end
             self:OpenConfig()
         end},
-    {"list",     "List every setting and its current value — try `/pc list <Category>` to filter",
+    {"list",     "List settings — `/pc list [<Category> | category | formatstring]`",
         function(self, rest) listSettings(self, rest) end},
     {"get",      "Print a setting's current value — `/pc get <path>`",
         function(self, rest) getSetting(self, rest) end},
@@ -352,8 +371,8 @@ local COMMANDS = {
         function(self, rest) runReset(self, rest) end},
     {"resetall", "Reset every category to addon defaults",
         function(self) runResetAll(self) end},
-    {"test",     "Print a sample of every active format string to chat",
-        function(self) self:Test() end},
+    {"test",     "Print sample chat lines — `/pc test [all | category <name> | formatstring <NAME>]`",
+        function(self, rest) runTest(self, rest) end},
 }
 
 -- Published so Config.lua's parent panel can render the slash-command list
@@ -370,18 +389,56 @@ function printHelp(self)
     end
 end
 
+-- Two reserved sub-keywords intercepted before the category-name path:
+--   `/pc list category`     → list every category name (alphabetical)
+--   `/pc list formatstring` → list every Category.GLOBALNAME pair
+-- Neither name is a valid category, so the existing ResolveCategory
+-- branch could never have matched them — the keywords are unambiguous.
+
 function listSettings(self, rest)
     if not schemaReady() then return end
     local arg = trim(rest)
+    local lowered = arg:lower()
 
-    -- No arg → dump every row across every category, matching KickCD's
-    -- /kcd list. With ~170 rows the output is long, but it's the only
-    -- way the slash UI reaches parity with the panel (which exposes a
-    -- toggle and a format edit-box per string). To filter, pass one
-    -- category name as an argument.
+    if lowered == "category" then
+        local sorted = {}
+        for _, c in ipairs(ns.Schema.CATEGORY_ORDER) do sorted[#sorted + 1] = c end
+        table.sort(sorted)
+        ns.Print(note("Categories (" .. #sorted .. "):"))
+        for _, c in ipairs(sorted) do ns.Print("  " .. c) end
+        return
+    end
+
+    if lowered == "formatstring" then
+        local pairs_ = {}
+        for _, category in ipairs(ns.Schema.CATEGORY_ORDER) do
+            local catData = PrettyChatDefaults[category]
+            if catData and catData.strings then
+                for globalName in pairs(catData.strings) do
+                    pairs_[#pairs_ + 1] = { category, globalName }
+                end
+            end
+        end
+        table.sort(pairs_, function(a, b)
+            if a[1] == b[1] then return a[2] < b[2] end
+            return a[1] < b[1]
+        end)
+        ns.Print(note("Format strings (" .. #pairs_ .. "):"))
+        for _, p in ipairs(pairs_) do
+            ns.Print(("  %s.%s"):format(p[1], p[2]))
+        end
+        return
+    end
+
+    -- No arg → dump every row across every category. With ~170 rows the
+    -- output is long, but it's the only way the slash UI reaches parity
+    -- with the panel (which exposes a toggle and a format edit-box per
+    -- string). To filter, pass a category name (or one of the two
+    -- reserved sub-keywords above).
     if arg == "" then
         ns.Print(note("Available settings (try ") .. cmd("/pc list <Category>")
-                 .. note(" to filter):"))
+                 .. note(", ") .. cmd("/pc list category")
+                 .. note(", or ") .. cmd("/pc list formatstring") .. note("):"))
         for _, category in ipairs(ns.Schema.CATEGORY_ORDER) do
             ns.Print("  [" .. category .. "]")
             for _, row in ipairs(ns.Schema.RowsByCategory(category)) do
@@ -475,6 +532,64 @@ end
 function runResetAll(self)
     self:ResetAll()
     ns.Print(note("all settings reset to defaults"))
+end
+
+local function formatStringExists(globalName)
+    for _, catData in pairs(PrettyChatDefaults) do
+        if catData.strings and catData.strings[globalName] then
+            return true
+        end
+    end
+    return false
+end
+
+function runTest(self, rest)
+    local arg = trim(rest)
+    if arg == "" or arg:lower() == "all" then
+        self:Test()
+        return
+    end
+
+    local kind, value = arg:match("^(%S+)%s*(.*)$")
+    kind  = (kind or ""):lower()
+    value = trim(value or "")
+
+    if kind == "category" then
+        if value == "" then
+            ns.Print("usage: " .. cmd("/pc test category <name>") .. note(". Valid: ")
+                     .. table.concat(ns.Schema.CATEGORY_ORDER, ", "))
+            return
+        end
+        local matched = ns.Schema.ResolveCategory(value)
+        if not matched then
+            ns.Print(note("unknown category '" .. value .. "'. Valid: ")
+                     .. table.concat(ns.Schema.CATEGORY_ORDER, ", "))
+            return
+        end
+        self:Test({ kind = "category", value = matched })
+        return
+    end
+
+    if kind == "formatstring" then
+        if value == "" then
+            ns.Print("usage: " .. cmd("/pc test formatstring <NAME>")
+                     .. note(" — try ") .. cmd("/pc list formatstring"))
+            return
+        end
+        local upper = value:upper()
+        if not formatStringExists(upper) then
+            ns.Print(note("unknown format string '" .. value .. "' — try ")
+                     .. cmd("/pc list formatstring"))
+            return
+        end
+        self:Test({ kind = "formatstring", value = upper })
+        return
+    end
+
+    ns.Print("usage: " .. cmd("/pc test") .. note(", ")
+             .. cmd("/pc test all") .. note(", ")
+             .. cmd("/pc test category <name>") .. note(", or ")
+             .. cmd("/pc test formatstring <NAME>"))
 end
 
 function PrettyChat:OnSlashCommand(input)

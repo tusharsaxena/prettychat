@@ -49,7 +49,7 @@ GlobalStrings/   ─▶ PrettyChatGlobalStrings (Blizzard reference, ~22,879 ent
 - **`General` is a virtual category.** No entry in `PrettyChatDefaults`; built by a dedicated `buildGeneralBody()` in `Config.lua` and stored as `db.profile.enabled` at the profile root (not under `db.profile.categories`). It owns the addon-wide toggle, Test, and Reset all to defaults.
 - **Auto-clear on default match.** For `string_format` rows, writing a value that equals the PrettyChat default clears the override entry instead of storing it. `db.profile.categories[Cat].strings` never collects "override that happens to equal the default".
 - **`CATEGORY_ORDER` is the single source of truth for display order.** Lives in `Schema.lua`; imported by `Config.lua` (left-rail order) and `PrettyChat.lua` (`Test()` and `/pc list` iteration). Iterating `pairs(PrettyChatDefaults)` directly would give a non-deterministic order.
-- **Cyan `[PC]` chat prefix on all addon output.** Routes through `ns.Print(msg)`. The one intentional exception is `Test()`'s sample lines themselves — emitted unprefixed so each preview looks like a real chat message. No raw `print(...)` calls anywhere.
+- **Cyan `[PC]` chat prefix on all addon output.** Routes through `ns.Print(msg)`. `Test()` writes directly to `DEFAULT_CHAT_FRAME:AddMessage` (so it can emit a structured per-category Original/Formatted block), but every body line still carries the `[PC]` prefix. No raw `print(...)` calls anywhere.
 - **No chat event hooks, no per-message rewriting.** PrettyChat overrides `_G[GLOBALNAME]` and lets WoW's chat code do the rest. Adding an event subscription or a chat-frame filter would change the addon's compatibility contract.
 
 ## External dependencies

@@ -35,7 +35,7 @@ Decisions made during requirements review and v1.x.x — these are settled, not 
 - **Auto-clear on default match.** For `string_format` rows, writing the value back to the PrettyChat default clears the override entry instead of storing a duplicate. `db.profile.categories[Cat].strings` never collects "override that happens to equal the default".
 - **Format-specifier signatures must match Blizzard's.** Each Blizzard string has a fixed signature (`%s`, `%d`, `%.1f`, `%2$s`, …); replacements must consume the same conversions in the same order or `string.format` errors at runtime. The panel's left edit box always shows Blizzard's exact original — copy from there.
 - **`/pc config` refuses during combat.** Blizzard's category-switch is protected; opening it under combat lockdown taints the panel.
-- **Cyan `[PC]` chat prefix on all addon output.** Every chat line goes through `ns.Print(msg)` in `PrettyChat.lua`, which prepends `|cff00ffff[PC]|r `. The one intentional exception is `Test()`'s sample lines themselves — emitted unprefixed so each preview looks identical to a real chat message; only the header/footer carry the prefix.
+- **Cyan `[PC]` chat prefix on all addon output.** Every chat line goes through `ns.Print(msg)` in `PrettyChat.lua`, which prepends `|cff00ffff[PC]|r `. `Test()` is the only path that writes directly to `DEFAULT_CHAT_FRAME:AddMessage` — necessary for its structured per-category Original/Formatted block — but every body line is still prefixed so the report can't be confused with real chat lines.
 
 ## Where the contract lives
 

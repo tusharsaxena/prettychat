@@ -17,7 +17,7 @@ local COMMANDS = {
     {"set",      "...", function(self, rest) setSetting(self, rest) end},
     {"reset",    "...", function(self, rest) runReset(self, rest) end},
     {"resetall", "...", function(self) runResetAll(self) end},
-    {"test",     "...", function(self) self:Test() end},
+    {"test",     "...", function(self, rest) runTest(self, rest) end},
 }
 ```
 
@@ -35,11 +35,15 @@ Unknown commands and the empty input fall back to `printHelp`.
 | `/pc config` | Open the Blizzard settings panel to the parent page and auto-expand the addon's sub-category tree so every per-category sub-page (Loot, Currency, …) is visible in the left rail without clicking the disclosure arrow. **Refuses during combat** (`InCombatLockdown()`) — Blizzard's category-switch is protected and would taint the panel. Prints a notice and stops if combat is active. |
 | `/pc list` | List every setting and its current value, grouped by category (~170 lines). With ~170 rows the output is long, but it's the only way the slash UI reaches parity with the panel (which exposes a toggle and a format edit-box per string). |
 | `/pc list <Category>` | Filter to one category. Case-insensitive (`/pc list loot` works). Prints the category toggle + every per-string `.enabled` and `.format` row. Unknown categories print the valid list. |
+| `/pc list category` | Reserved sub-keyword: print every category name in alphabetical order, with a count header. The two reserved keywords (`category`, `formatstring`) are intercepted **before** the category-name path — neither is a valid category name, so the lookup is unambiguous. |
+| `/pc list formatstring` | Reserved sub-keyword: print every `Category.GLOBALNAME` pair, sorted by category then by global name, with a count header. Useful for finding the exact case-sensitive name to pass to `/pc test formatstring <NAME>` or `/pc set <Cat>.<NAME>.format ...`. |
 | `/pc get <path>` | Print one row's current value (e.g. `/pc get Loot.LOOT_ITEM_SELF.enabled` or `/pc get General.enabled`). |
 | `/pc set <path> <value>` | Write one row through `ns.Schema.Set`. `bool` accepts `true/false/on/off/yes/no/1/0`; `string` consumes the rest of the line literally. For `string_format` rows, setting `<value>` to the row's PrettyChat default clears the override (see [schema.md](./schema.md#auto-clear-on-default)). |
 | `/pc reset <Category>` | Clear all overrides for one category (case-insensitive name). For `General`, clears the addon-wide enabled override back to default (true). |
 | `/pc resetall` | Clear every category's overrides AND the addon-wide enabled flag. |
-| `/pc test` | Synthesize a sample chat line from every format string regardless of enable toggles (same action as the General page's Test button). See [settings-panel.md](./settings-panel.md#the-test-preview). |
+| `/pc test` / `/pc test all` | Print a per-category Original-vs-Formatted diff for every format string. Output ignores enable toggles (same action as the General page's Test button). See [settings-panel.md](./settings-panel.md#the-test-preview). |
+| `/pc test category <name>` | Filter the diff to one category. Case-insensitive name with the same unambiguous-prefix lookup as `/pc reset` (`Schema.ResolveCategory`). |
+| `/pc test formatstring <NAME>` | Filter the diff to a single global. Input is uppercased then validated against `PrettyChatDefaults`. Globals registered under more than one category (e.g. `LOOT_ITEM_CREATED_SELF`) print under each — both registrations are shown. |
 | unknown command | Print the help index (with an "unknown command" warning first). |
 
 Output is colored: yellow (`|cffffff00`) for command names via the local `cmd()` helper, white (`|cffffffff`) for explanatory notes via `note()`. The header line includes the version banner.
@@ -65,11 +69,12 @@ Each command body is a small file-local function in `PrettyChat.lua`:
 | Function | Responsibility |
 |----------|----------------|
 | `printHelp(self)` | Iterate `COMMANDS` and print one yellow-name + white-description line per row. Header includes the version banner. |
-| `listSettings(self, rest)` | If `rest` is empty: print every row across every category in `CATEGORY_ORDER` order. Else: resolve `rest` via `ns.Schema.ResolveCategory` and print only that category. Format: `"  <path> = <value>"` with values quoted for strings, raw for bools. |
+| `listSettings(self, rest)` | First two reserved sub-keywords are intercepted before category resolution: `category` prints a sorted list of category names, `formatstring` prints every `Category.GLOBALNAME` pair sorted by category then by name. If `rest` is empty: print every row across every category in `CATEGORY_ORDER` order. Else: resolve `rest` via `ns.Schema.ResolveCategory` and print only that category. Format: `"  <path> = <value>"` with values quoted for strings, raw for bools. |
 | `getSetting(self, rest)` | Parse `<path>`, look up via `ns.Schema.FindByPath`, print `"<path> = <value>"`. Errors with `"setting not found"` for unknowns. |
 | `setSetting(self, rest)` | Parse `<path> <value>`, look up the row, parse the value to the row's declared type (`bool` accepts seven aliases, `string` consumes the rest of the line), then call `ns.Schema.Set(path, newVal)`. Echoes the new value back via `ns.Schema.Get`. |
 | `runReset(self, rest)` | Resolve `<Category>` and call `PrettyChat:ResetCategory(matched)`. No in-chat confirmation — the command itself is the assertion. |
 | `runResetAll(self)` | Call `PrettyChat:ResetAll()`. No in-chat confirmation. |
+| `runTest(self, rest)` | Parse the first whitespace-separated token. Empty or `all` → `PrettyChat:Test()` (every string). `category <name>` → resolve via `Schema.ResolveCategory`, then `Test({kind="category", value=matched})`. `formatstring <NAME>` → uppercase input, validate against `PrettyChatDefaults`, then `Test({kind="formatstring", value=upper})`. Bad sub-token prints a four-line usage. |
 
 `schemaReady()` guards each schema-touching command — prints `"schema not ready yet"` if `ns.Schema` hasn't loaded (shouldn't happen in practice given the TOC load order, but cheap to check).
 

@@ -36,7 +36,7 @@ Public surfaces are exposed on `ns`:
 |--------|--------|---------|
 | `ns.Print(msg)` | `PrettyChat.lua` | every file (`Schema.lua` indirectly via `PrettyChat.*`, slash command bodies) |
 | `ns.Schema` | `Schema.lua` | `PrettyChat.lua` (slash dispatch), `Config.lua` (every widget get/set; registers a per-sub-page refresh closure via `Schema.RegisterRefresher` on first `OnShow`) |
-| `ns.Const` | `Constants.lua` | `Config.lua` (panel padding / header height / spacers / `Color` palette); `PrettyChat.lua` (`Color` palette for `[PC]` prefix, `cmd`/`note` helpers, Test header/footer) |
+| `ns.Const` | `Constants.lua` | `Config.lua` (panel padding / header height / spacers / `Color` palette); `PrettyChat.lua` (`Color` palette: `cyan` for `[PC]` prefix, `yellow`/`white` for `cmd`/`note` helpers, `gold`+`green` for the `/pc test` Category header and Name/Original/Formatted labels, `grey` for inline error text) |
 | `ns.RenderSample(fmt)` | `PrettyChat.lua` | `Config.lua` (per-string Preview EditBox) |
 | `ns.COMMANDS` | `PrettyChat.lua` | `Config.lua` (parent page's slash-command list — keeps panel and `/pc help` in lockstep with one source) |
 | `ns.Config.RegisterPanels()` | `Config.lua` | `PrettyChat.lua` (`OnEnable` calls it after the snapshot/`ApplyStrings` pair, replacing the old `PLAYER_LOGIN` bootstrap frame) |
@@ -57,7 +57,7 @@ PrettyChat:OpenConfig()                -- Settings.OpenToCategory(self.optionsCa
 PrettyChat:ApplyStrings()              -- writes enabled overrides to _G; restores originals for disabled ones
 PrettyChat:ResetCategory(category)     -- clears one category's overrides + ApplyStrings + NotifyPanelChange
 PrettyChat:ResetAll()                  -- clears every category + the addon-wide flag + ApplyStrings + NotifyPanelChange
-PrettyChat:Test()                      -- prints one synthesized sample line per format string (ignores enable toggles)
+PrettyChat:Test(filter?)               -- prints a per-category Original-vs-Formatted block per string (ignores enable toggles); filter is nil | {kind="category", value=…} | {kind="formatstring", value=…}
 
 -- Read helpers (used by Schema closures, ApplyStrings, panel widgets)
 PrettyChat:GetStringValue(category, globalName)   -- user override falling back to PrettyChatDefaults

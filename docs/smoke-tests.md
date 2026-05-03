@@ -187,6 +187,15 @@ Tests are grouped by subsystem. Each test has an ID (`T-NN`), a one-line **Why**
 - Steps: `/pc list loot`, `/pc list LOOT`, `/pc list Loot`, `/pc list nope`.
 - Expected: first three identical (Loot rows). Last shows `unknown category 'nope'. Valid: General, Loot, Currency, ...`.
 
+#### T-31a — Reserved sub-keywords for `/pc list`
+
+> Why: `category` and `formatstring` are intercepted before `ResolveCategory`, so they don't collide with category names.
+
+- Steps:
+  1. `/pc list category` — should print `Categories (9):` followed by every category name in alphabetical order (Currency, Experience, General, Honor, Loot, Misc, Money, Reputation, Tradeskill).
+  2. `/pc list formatstring` — should print `Format strings (81):` followed by every `Category.GLOBALNAME` pair sorted by category then by global name (e.g. `Currency.CURRENCY_GAINED`, `Currency.CURRENCY_GAINED_MULTIPLE`, …, `Tradeskill.TRADESKILL_LOG_THIRDPERSON`).
+- Expected: both forms succeed without falling through to the unknown-category error path. Counts in headers match the actual list lengths.
+
 #### T-32 — `/pc get` for each row kind
 
 > Why: schema row closures handle `addon_enabled`, `category_enabled`, `string_enabled`, `string_format`.
@@ -296,7 +305,24 @@ Tests are grouped by subsystem. Each test has an ID (`T-NN`), a one-line **Why**
 > Why: `buildSampleArgs` should produce typed placeholders (`"Sample"` for `%s`, `42` for `%d/%i/%u/%x/%o`, `1.5` for `%f/%g/%e`, `65` for `%c`, `"?"` for unknowns).
 
 - Steps: `/pc test`.
-- Expected: every category prints sample lines. Headers/footers carry the `[PC]` prefix; sample bodies do NOT (they look like real chat).
+- Expected: every category prints a `Category: <name>` gold header followed by a 3-line block per string (green `Name:` / `Original:` / `Formatted:` labels, then a blank separator). Every line — header, category banner, body, blank separators, footer — carries the `[PC]` prefix.
+
+#### T-52a — `/pc test` filters
+
+> Why: `runTest` parses sub-keywords (`all`, `category`, `formatstring`) and forwards a typed filter table to `Test`. Each filter must restrict the output to the matching subset; bad input must surface a usage hint, not a Lua error.
+
+- Steps:
+  1. `/pc test all` — same output as bare `/pc test`.
+  2. `/pc test category Loot` — only the Loot block prints. Footer count matches Loot's string count (19).
+  3. `/pc test category loo` — same output as case 2 (case-insensitive prefix match via `Schema.ResolveCategory`).
+  4. `/pc test category General` — emits `(no matching strings)` and skips the footer (General is virtual, no strings).
+  5. `/pc test category nope` — chat prints `unknown category 'nope'. Valid: General, Loot, ...`. No test output.
+  6. `/pc test formatstring CURRENCY_GAINED` — only the Currency category header prints, and only the `CURRENCY_GAINED` 3-line block under it. Footer count is `1`.
+  7. `/pc test formatstring currency_gained` — same as case 6 (input is uppercased).
+  8. `/pc test formatstring LOOT_ITEM_CREATED_SELF` — both Loot and Tradeskill headers print, each with a single block for that global. Footer count is `2` (one per registration).
+  9. `/pc test formatstring NOPE_NOPE` — chat prints `unknown format string 'NOPE_NOPE' — try /pc list formatstring`. No test output.
+  10. `/pc test bogus` — chat prints the four-line usage (no-arg, all, category, formatstring forms).
+- Expected: all ten cases run without Lua errors; subset, no-match, and error cases each behave as listed.
 
 #### T-53 — Cross-category shared global (`LOOT_ITEM_CREATED_SELF`)
 
