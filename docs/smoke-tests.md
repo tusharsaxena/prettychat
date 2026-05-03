@@ -107,10 +107,11 @@ Tests are grouped by subsystem. Each test has an ID (`T-NN`), a one-line **Why**
 
 #### T-22 — Sub-page header breadcrumb
 
-> Why: sub-pages prefix titles via `TITLE_PREFIX = "Ka0s Pretty Chat  |  "`.
+> Why: `buildHeader` builds sub-page titles as `PARENT_TITLE .. sep .. title` where `sep = " |A:common-icon-forwardarrow:16:16|a "` — an inline-atlas chevron, not a font glyph.
 
 - Steps: open each sub-page in turn.
-- Expected: page header reads `Ka0s Pretty Chat  |  Loot`, `Ka0s Pretty Chat  |  Currency`, etc. Atlas divider underneath in the same gold as the title.
+- Expected: page header reads `Ka0s Pretty Chat ▸ Loot`, `Ka0s Pretty Chat ▸ Currency`, etc., with the separator visibly rendered as a small gold right-arrow texture (not as a literal `▸` character or pipe). Atlas divider underneath in the same gold as the title.
+- Failure mode: separator appears as raw escape text `|A:common-icon-forwardarrow:16:16|a`, or as a missing-texture box. Cause: the atlas was retired in a client patch. Swap the atlas name in `Config.lua`'s `sep` local to `NPE_RightClick` or `chevron-collapse`.
 
 #### T-23 — Per-string block layout
 
@@ -240,10 +241,10 @@ Tests are grouped by subsystem. Each test has an ID (`T-NN`), a one-line **Why**
 
 #### T-37 — Combat lockdown guard on `/pc config`
 
-> Why: `Settings.OpenToCategory` is taint-protected during combat.
+> Why: `Settings.OpenToCategory` is taint-protected during combat. The guard lives in `PrettyChat:OpenConfig` itself (not just the slash dispatcher), so any caller is gated.
 
-- Steps: enter combat (engage a target dummy or attack a mob). While in combat: `/pc config`.
-- Expected: chat prints `cannot open settings during combat`. Panel does NOT open. Leave combat — `/pc config` works.
+- Steps: enter combat (engage a target dummy or attack a mob). While in combat: `/pc config`. Then, still in combat, run `/run LibStub("AceAddon-3.0"):GetAddon("PrettyChat"):OpenConfig()` to exercise the programmatic path.
+- Expected: both calls print `cannot open settings during combat — Blizzard's category-switch is protected` (grey). Panel does NOT open in either case. Leave combat — `/pc config` works.
 
 #### T-38 — Unknown command + empty input
 
