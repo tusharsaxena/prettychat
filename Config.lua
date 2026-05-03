@@ -9,7 +9,6 @@ local Schema = ns.Schema
 local CATEGORY_ORDER = Schema.CATEGORY_ORDER
 
 local PARENT_TITLE = "Ka0s Pretty Chat"
-local TITLE_PREFIX = PARENT_TITLE .. "  |  "
 
 local TOC_NOTES = (C_AddOns and C_AddOns.GetAddOnMetadata
                    and C_AddOns.GetAddOnMetadata(addonName, "Notes")) or ""
@@ -171,11 +170,19 @@ end
 -- ---------------------------------------------------------------------
 
 local function buildHeader(panel, title, opts)
-    -- Sub-pages prefix the title with "Ka0s Pretty Chat  |  " so the
-    -- in-page title reads as a breadcrumb. The parent page opts in to
-    -- the unprefixed form via opts.isMain so it doesn't read as
-    -- "Ka0s Pretty Chat | Ka0s Pretty Chat".
-    local displayTitle = opts.isMain and title or (TITLE_PREFIX .. title)
+    -- Sub-pages render with a "Ka0s Pretty Chat ▸ <Page>" breadcrumb.
+    -- The separator is an inline atlas (not a glyph) so it renders the
+    -- same regardless of the active FontString font / locale fallback.
+    -- The parent page opts in to the unprefixed form via opts.isMain
+    -- (otherwise it would read "Ka0s Pretty Chat ▸ Ka0s Pretty Chat").
+    -- The Blizzard left-tree label is driven by panel.name in
+    -- createPanel and stays unprefixed so the tree indents under the
+    -- parent without visual repetition.
+    local displayTitle = title
+    if not opts.isMain then
+        local sep = " |A:common-icon-forwardarrow:16:16|a "
+        displayTitle = PARENT_TITLE .. sep .. title
+    end
 
     local titleFS = panel:CreateFontString(nil, "OVERLAY", "GameFontNormalHuge")
     titleFS:SetPoint("TOPLEFT", panel, "TOPLEFT",
