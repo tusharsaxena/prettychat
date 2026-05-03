@@ -91,9 +91,10 @@ When reporting a bug, the [smoke-test suite](./docs/smoke-tests.md) is a useful 
 
 ## Version History
 
-| Version | Changes |
-|---------|---------|
-| **1.3.0** | Filter subcommands for `/pc test` (`all`, `category <name>`, `formatstring <NAME>`) and `/pc list` (`category`, `formatstring`); `/pc test` output redesigned as a per-category Original-vs-Formatted diff with the `[PC]` prefix on every line; sub-page header breadcrumb separator switched from a pipe glyph to an inline atlas chevron (font-agnostic, locale-safe); combat-lockdown guard hardened to live inside `OpenConfig` itself so any caller is gated; settings panel rebuilt on the modern canvas-layout framework with per-string row restyle, auto-expand of the addon's sub-tree on `/pc config`, and a logo + slash-commands landing page; review-driven internal cleanup (single write path tightened around `Schema.Set`, dead exports removed, smoke-test suite added). |
-| **1.2.0** | New General sub-page (master Enable toggle, Test button, Reset All); schema-driven slash commands (`/pc list/get/set/reset/resetall/test`) sharing one write path with the panel; settings restructured into Blizzard sub-pages (one per category, no tab strip) with side-by-side Original/New edit boxes per string. |
-| **1.1.0** | Full configuration UI via `/pc` / `/prettychat`: per-string customization with live preview, per-category and per-string enable toggles (disabled strings revert to Blizzard defaults), reset-to-defaults, and AceDB profile storage. |
-| **1.0.0** | Initial release … yay! |
+| Version | Date | Highlights |
+|---------|------|------------|
+| 1.3.0 | 2026-05-03 | Settings panel rebuilt on the canvas-layout framework — nine Blizzard sub-pages (one per category) plus a General page (master Enable, Test, Reset All), logo + slash-commands landing, per-string row restyle, atlas-chevron breadcrumb. Schema-driven `/pc` CLI (`help`, `list`, `get`, `set`, `reset`, `resetall`, `test`) sharing one write path with the panel; `/pc test` rendered as a per-category Original-vs-Formatted diff; `category` / `formatstring` filters on `/pc test` and `/pc list`; cyan `[PC]` chat prefix. Combat-lockdown guard moved into `OpenConfig`. MIT LICENSE; ARCHITECTURE.md and modular `docs/`; review-driven cleanup (dead exports removed, smoke-test suite added); CRLF-on-disk via `.gitattributes`. |
+| 1.2.0 | 2026-04-24 | Code modularization; bundled `GlobalStrings` database with lookup in the settings panel. |
+| 1.1.0 | 2026-02-14 | Ace3 integration; vendored `GlobalStrings.lua` reference; Blizzard format strings made configurable via the settings panel. |
+| 1.0.0 | 2026-02-14 | Updated for WoW Midnight (TOC `120000`). |
+| 0.0.3 | 2023-10-05 | Initial release. |
