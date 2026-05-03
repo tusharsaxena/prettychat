@@ -7,6 +7,9 @@ local PREFIX = Color.cyan .. "[PC]" .. Color.reset .. " "
 local VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata
                  and C_AddOns.GetAddOnMetadata(addonName, "Version")) or "?"
 
+local cmd  = function(s) return Color.yellow .. s .. Color.reset end
+local note = function(s) return Color.white  .. s .. Color.reset end
+
 function ns.Print(msg)
     DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. msg)
 end
@@ -230,42 +233,61 @@ function ns.RenderSample(fmt)
     return nil, result
 end
 
--- Print one synthesized line per format string the user has configured,
--- regardless of the master / per-category / per-string toggles — so the
--- preview works as a "what do my formats look like?" check even when
--- the addon is disabled. The state of the toggles ONLY affects what
+-- Print every format string in a per-category block. For each string
+-- show the global name, the rendered Blizzard original (from the
+-- snapshot taken in OnEnable), and the rendered PrettyChat-configured
+-- value — so the user can diff side by side regardless of the master
+-- / per-category / per-string toggles. The toggles ONLY affect what
 -- ApplyStrings writes to live chat; this preview is for the user.
 --
--- Output goes to DEFAULT_CHAT_FRAME WITHOUT the [PC] prefix so each
--- sample line looks exactly like the real loot/currency/XP message
--- would. Header and footer ARE prefixed, so the test block is
--- bracketed visually.
+-- Every line carries the [PC] prefix so the report stays visually
+-- distinct from real chat traffic interleaved with it.
 function PrettyChat:Test()
     DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. note("sample of every format string (preview ignores enable toggles):"))
     if not self:IsAddonEnabled() then
         DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. note("(addon is currently disabled — these formats aren't being applied to live chat)"))
     end
 
+    local labelName      = Color.green .. "Name: "      .. Color.reset
+    local labelOriginal  = Color.green .. "Original: "  .. Color.reset
+    local labelFormatted = Color.green .. "Formatted: " .. Color.reset
+
+    local function renderOrError(fmt)
+        local rendered, err = ns.RenderSample(fmt)
+        if rendered then return rendered, false end
+        return Color.grey .. "(error: " .. tostring(err) .. ")" .. Color.reset, true
+    end
+
     local printed, errored = 0, 0
     for _, category in ipairs(ns.Schema.CATEGORY_ORDER) do
         local catData = PrettyChatDefaults[category]
-        if catData then
+        if catData and catData.strings and next(catData.strings) then
+            DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. Color.gold .. "Category: " .. category .. Color.reset)
+            DEFAULT_CHAT_FRAME:AddMessage(PREFIX)
+
             local sortedNames = {}
             for globalName in pairs(catData.strings) do
                 sortedNames[#sortedNames + 1] = globalName
             end
             table.sort(sortedNames)
+
             for _, globalName in ipairs(sortedNames) do
-                local fmt = self:GetStringValue(category, globalName)
-                local rendered, err = ns.RenderSample(fmt)
-                if rendered then
-                    DEFAULT_CHAT_FRAME:AddMessage(rendered)
-                    printed = printed + 1
-                else
-                    DEFAULT_CHAT_FRAME:AddMessage(Color.grey
-                        .. ("(%s.%s format error: %s)"):format(category, globalName, tostring(err))
-                        .. Color.reset)
+                DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. labelName .. globalName)
+
+                local origFmt = (self.originalStrings and self.originalStrings[globalName]) or _G[globalName]
+                local origLine, origErr = renderOrError(origFmt)
+                DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. labelOriginal .. origLine)
+
+                local newFmt = self:GetStringValue(category, globalName)
+                local newLine, newErr = renderOrError(newFmt)
+                DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. labelFormatted .. newLine)
+
+                DEFAULT_CHAT_FRAME:AddMessage(PREFIX)
+
+                if newErr or origErr then
                     errored = errored + 1
+                else
+                    printed = printed + 1
                 end
             end
         end
@@ -287,9 +309,6 @@ end
 -- generated from this same table so adding a new command means adding
 -- one row. The schema-driven get/set/list go through ns.Schema so the
 -- panel widgets and slash commands share a single write path.
-
-local cmd  = function(s) return Color.yellow .. s .. Color.reset end
-local note = function(s) return Color.white  .. s .. Color.reset end
 
 local function trim(s)
     return (s or ""):gsub("^%s+", ""):gsub("%s+$", "")

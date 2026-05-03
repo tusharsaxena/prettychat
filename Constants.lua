@@ -49,5 +49,6 @@ Const.Color = {
     yellow = "|cffffff00",
     white  = "|cffffffff",
     cyan   = "|cff00ffff",
+    green  = "|cff40ff40",
     reset  = "|r",
 }
