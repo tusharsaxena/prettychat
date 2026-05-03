@@ -1,6 +1,6 @@
 # Execution plan — Ka0s Pretty Chat review
 
-Companion to `REVIEW_FINDINGS.md` and `REVIEW_PROPOSED_CHANGES.md`. Ordered milestones with human-checkpoints between, so a multi-agent execution can drive the work without surprises.
+Companion to `01_FINDINGS.md` and `02_PROPOSED_CHANGES.md`. Ordered milestones with human-checkpoints between, so a multi-agent execution can drive the work without surprises.
 
 There are no automated tests for PrettyChat — every milestone exits on `docs/smoke-tests.md` runs (the listed groups, not the full suite). Pre-release does the full suite once.
 

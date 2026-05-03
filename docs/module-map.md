@@ -35,10 +35,11 @@ Public surfaces are exposed on `ns`:
 | Member | Set by | Used by |
 |--------|--------|---------|
 | `ns.Print(msg)` | `PrettyChat.lua` | every file (`Schema.lua` indirectly via `PrettyChat.*`, slash command bodies) |
-| `ns.Schema` | `Schema.lua` | `PrettyChat.lua` (slash dispatch), `Config.lua` (every widget get/set; also overrides `Schema.NotifyPanelChange` with a refresher dispatch) |
-| `ns.Const` | `Constants.lua` | `Config.lua` (panel padding / header height / spacers) |
+| `ns.Schema` | `Schema.lua` | `PrettyChat.lua` (slash dispatch), `Config.lua` (every widget get/set; registers a per-sub-page refresh closure via `Schema.RegisterRefresher` on first `OnShow`) |
+| `ns.Const` | `Constants.lua` | `Config.lua` (panel padding / header height / spacers / `Color` palette); `PrettyChat.lua` (`Color` palette for `[PC]` prefix, `cmd`/`note` helpers, Test header/footer) |
 | `ns.RenderSample(fmt)` | `PrettyChat.lua` | `Config.lua` (per-string Preview EditBox) |
 | `ns.COMMANDS` | `PrettyChat.lua` | `Config.lua` (parent page's slash-command list — keeps panel and `/pc help` in lockstep with one source) |
+| `ns.Config.RegisterPanels()` | `Config.lua` | `PrettyChat.lua` (`OnEnable` calls it after the snapshot/`ApplyStrings` pair, replacing the old `PLAYER_LOGIN` bootstrap frame) |
 
 The addon object itself (`PrettyChat`, an `AceAddon-3.0` object) is **not** published on `ns`. Other files reach it via `LibStub("AceAddon-3.0"):GetAddon("PrettyChat")`.
 

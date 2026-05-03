@@ -1,6 +1,6 @@
 # Proposed changes — Ka0s Pretty Chat
 
-Companion to `REVIEW_FINDINGS.md`. Each LLD section links back to the finding IDs it implements.
+Companion to `01_FINDINGS.md`. Each LLD section links back to the finding IDs it implements.
 
 ## HLD — themes
 

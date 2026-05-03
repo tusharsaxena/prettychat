@@ -70,8 +70,8 @@ end
 Runs from:
 
 - `OnEnable` — initial pass after the snapshot.
-- `Schema.Set` (every settings mutation) — via the row's `set()` closure.
-- `PrettyChat:ResetCategory(cat)` and `PrettyChat:ResetAll()`.
+- `Schema.Set` (every settings mutation) — `Schema.Set` calls `ApplyStrings` directly after the row's `set()` writes the DB. Row `set()` closures themselves are pure DB writes; they do not trigger `ApplyStrings` so a future `Schema.SetMany` / preset-load can apply once per batch.
+- `PrettyChat:ResetCategory(cat)` and `PrettyChat:ResetAll()` — both bypass `Schema.Set` (they zero out whole sub-tables, not write through a single row), so they call `ApplyStrings` and `Schema.NotifyPanelChange` themselves.
 
 Idempotent — calling it multiple times leaves `_G` in the same state.
 
