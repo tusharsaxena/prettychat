@@ -4,16 +4,12 @@ local PrettyChat = LibStub("AceAddon-3.0"):GetAddon("PrettyChat")
 local AceGUI = LibStub("AceGUI-3.0")
 
 local Const  = ns.Const
+local Color  = Const.Color
 local Schema = ns.Schema
 local CATEGORY_ORDER = Schema.CATEGORY_ORDER
 
 local PARENT_TITLE = "Ka0s Pretty Chat"
 local TITLE_PREFIX = PARENT_TITLE .. "  |  "
-
-local GOLD  = "|cffffd700"
-local GREY  = "|cffaaaaaa"
-local RED   = "|cffff5050"
-local RESET = "|r"
 
 local TOC_NOTES = (C_AddOns and C_AddOns.GetAddOnMetadata
                    and C_AddOns.GetAddOnMetadata(addonName, "Notes")) or ""
@@ -60,6 +56,14 @@ end
 -- same x. Restores stock behaviour on widget release so the AceGUI pool
 -- isn't polluted for other addons that re-acquire the same instance.
 -- Mirrors KickCD's Helpers.PatchAlwaysShowScrollbar.
+--
+-- Reaches into AceGUI ScrollFrame internals: `scrollframe`, `scrollbar`,
+-- `content` (with `original_width`), `localstatus`, `scrollBarShown`,
+-- `updateLock`, `FixScroll`, `MoveScroll`, `OnRelease`. If a future
+-- AceGUI release renames or restructures any of these, this patch will
+-- silently stop reserving the gutter (or in the worst case error in
+-- FixScroll) — that's the field list to diff against on upgrade.
+-- Verified against AceGUI-3.0 r1308 (KickCD's bundled copy).
 -- ---------------------------------------------------------------------
 
 local function patchAlwaysShowScrollbar(scroll)
@@ -377,8 +381,25 @@ local function buildStringRow(scroll, category, globalName, strData, refreshers)
     enable:SetCallback("OnValueChanged", function(_, _, value)
         ns.Schema.Set(enabledPath, value and true or false)
     end)
-    attachTooltip(enable, "Enable",
-        "Use the rewritten format for this message. When unchecked, Blizzard's original is used.")
+
+    local enableTooltip =
+        "Use the rewritten format for this message. When unchecked, Blizzard's original is used."
+    local sharedCats = Schema.crossRegisteredGlobals
+                       and Schema.crossRegisteredGlobals[globalName]
+    if sharedCats then
+        local others = {}
+        for _, c in ipairs(sharedCats) do
+            if c ~= category then others[#others + 1] = c end
+        end
+        if #others > 0 then
+            enableTooltip = enableTooltip
+                .. "\n\n" .. Color.grey
+                .. "Shared with " .. table.concat(others, ", ")
+                .. " — both registrations write the same Blizzard global; the last category to apply wins on /reload."
+                .. Color.reset
+        end
+    end
+    attachTooltip(enable, "Enable", enableTooltip)
     row1:AddChild(enable)
 
     local origInput = AceGUI:Create("EditBox")
@@ -400,7 +421,7 @@ local function buildStringRow(scroll, category, globalName, strData, refreshers)
 
     local captionLbl = AceGUI:Create("Label")
     captionLbl:SetRelativeWidth(LEFT_W)
-    captionLbl:SetText(GREY .. globalName .. RESET)
+    captionLbl:SetText(Color.grey .. globalName .. Color.reset)
     row2:AddChild(captionLbl)
 
     local newInput = AceGUI:Create("EditBox")
@@ -544,14 +565,16 @@ local function buildParentBody(ctx)
 
     local alias = AceGUI:Create("Label")
     alias:SetFullWidth(true)
-    alias:SetText(GREY .. "/prettychat is an alias for /pc" .. RESET)
+    alias:SetText(Color.grey .. "/prettychat is an alias for /pc" .. Color.reset)
     scroll:AddChild(alias)
     addSpacer(scroll, Const.ROW_VSPACER)
 
     for _, entry in ipairs(ns.COMMANDS or {}) do
         local row = AceGUI:Create("Label")
         row:SetFullWidth(true)
-        row:SetText(("|cffffff00/pc %s|r  |cffffffff—|r  %s"):format(entry[1], entry[2]))
+        row:SetText(("%s/pc %s%s  %s—%s  %s"):format(
+            Color.yellow, entry[1], Color.reset,
+            Color.white, Color.reset, entry[2]))
         scroll:AddChild(row)
     end
 end
@@ -559,8 +582,6 @@ end
 -- ---------------------------------------------------------------------
 -- Registration
 -- ---------------------------------------------------------------------
-
-PrettyChat.subRefreshers = {}
 
 local function registerPanels()
     if not (Settings and Settings.RegisterCanvasLayoutCategory
@@ -597,7 +618,7 @@ local function registerPanels()
             catCtx.panel:SetScript("OnShow", function()
                 if rendered then return end
                 rendered = true
-                PrettyChat.subRefreshers[category] = buildGeneralBody(catCtx)
+                Schema.RegisterRefresher(category, buildGeneralBody(catCtx))
             end)
         else
             local catData = PrettyChatDefaults[category]
@@ -610,7 +631,7 @@ local function registerPanels()
                 catCtx.panel:SetScript("OnShow", function()
                     if rendered then return end
                     rendered = true
-                    PrettyChat.subRefreshers[category] = buildCategoryBody(catCtx, category, catData)
+                    Schema.RegisterRefresher(category, buildCategoryBody(catCtx, category, catData))
                 end)
             end
         end
@@ -620,23 +641,5 @@ local function registerPanels()
     end
 end
 
--- Replace Schema.NotifyPanelChange (which previously invalidated the
--- AceConfigDialog cache for the matching app) with a refresher dispatch
--- that re-syncs visible widgets on the affected sub-page. Master-toggle
--- changes (category == "General") cascade to every sub-page since
--- per-string disabled state depends on the master.
-function ns.Schema.NotifyPanelChange(category)
-    if category == "General" or category == nil then
-        for _, fn in pairs(PrettyChat.subRefreshers) do pcall(fn) end
-        return
-    end
-    local fn = PrettyChat.subRefreshers[category]
-    if fn then pcall(fn) end
-end
-
-local bootstrap = CreateFrame("Frame")
-bootstrap:RegisterEvent("PLAYER_LOGIN")
-bootstrap:SetScript("OnEvent", function(self)
-    registerPanels()
-    self:UnregisterAllEvents()
-end)
+ns.Config = ns.Config or {}
+ns.Config.RegisterPanels = registerPanels

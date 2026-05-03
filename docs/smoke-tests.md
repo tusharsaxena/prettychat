@@ -247,7 +247,7 @@ Tests are grouped by subsystem. Each test has an ID (`T-NN`), a one-line **Why**
 
 #### T-40 — Slash mutation reflects in open panel
 
-> Why: `Schema.Set` calls `Schema.NotifyPanelChange(category)` → dispatches to `PrettyChat.subRefreshers[category]` → re-syncs visible widgets.
+> Why: `Schema.Set` calls `Schema.NotifyPanelChange(category)` → invokes the closure registered via `Schema.RegisterRefresher(category, …)` → re-syncs visible widgets.
 
 - Steps: open `/pc config`, navigate to the Loot sub-page. Leave the panel open. From chat: `/pc set Loot.LOOT_ITEM_SELF.enabled false`. Look at the panel.
 - Expected: the per-string Enable checkbox for `LOOT_ITEM_SELF` flips to unchecked without reopening the panel. The New input becomes disabled.

@@ -25,8 +25,9 @@ Each row carries its own `get()` and `set(value)` closures. PrettyChat's storage
 function Schema.Set(path, value)
     local row = byPath[path]
     if not row then return false end
-    row.set(value)                              -- writes DB + runs PrettyChat:ApplyStrings()
-    Schema.NotifyPanelChange(row.category)      -- dispatches to the affected sub-page's refresher (Config.lua)
+    row.set(value)                              -- pure DB write
+    PrettyChat:ApplyStrings()                   -- reconcile live _G overrides
+    Schema.NotifyPanelChange(row.category)      -- refresh the affected sub-page
     return true
 end
 ```
@@ -36,7 +37,9 @@ Both surfaces go through the same row's `set()`:
 - **Panel widget callbacks** in `Config.lua` call `ns.Schema.Set(path, val)`.
 - **`/pc set`** (in `PrettyChat.lua`'s `setSetting`) parses the value to the row's declared type, then calls `ns.Schema.Set(path, newVal)`.
 
-After writing, `Set` runs `PrettyChat:ApplyStrings()` (so the live `_G` overrides reconcile — see [override-pipeline.md](./override-pipeline.md)) and calls `Schema.NotifyPanelChange(row.category)`. `Config.lua` rebinds `NotifyPanelChange` to dispatch to the affected sub-page's refresher closure (`PrettyChat.subRefreshers[category]`), which re-syncs every visible widget on that page from the DB. Master-toggle changes (category `"General"`) cascade to every sub-page since per-string disabled state depends on the master. This keeps the panel and the slash UI from ever drifting — a `/pc set` while the panel is open updates both surfaces in the same frame.
+Row `set()` closures are pure DB writes — they do **not** run `ApplyStrings` or `NotifyPanelChange` themselves. Both side effects live in `Schema.Set` so a future `Schema.SetMany` / preset-load can apply once per batch instead of N times. Callers must therefore never invoke `row.set(value)` directly; always go through `Schema.Set`.
+
+`Schema.NotifyPanelChange(category)` dispatches to a refresher closure that `Config.lua` registers per sub-page on first `OnShow` via `Schema.RegisterRefresher(category, fn)`. The closure re-syncs every visible widget on that page from the DB. Master-toggle changes (category `"General"` or `nil`) cascade to every registered refresher since per-string disabled state depends on the master. This keeps the panel and the slash UI from ever drifting — a `/pc set` while the panel is open updates both surfaces in the same frame. Sub-pages that have never been opened have no entry; that's correct because their first `OnShow` builds widgets seeded from the live DB and so cannot show stale state.
 
 ### Auto-clear on default
 
@@ -60,7 +63,8 @@ So writing a format back to its default value via `/pc set` or the panel acts as
 | `Schema.FindByPath(path)` | O(1) lookup; returns the row or `nil`. |
 | `Schema.Get(path)` / `Schema.Set(path, value)` | Read/write through the row's closures. `Set` returns `false` if the path is unknown. |
 | `Schema.ResolveCategory(name)` | Case-insensitive PascalCase resolver — `/pc reset loot` finds `Loot`. Returns `nil` for unknowns. |
-| `Schema.NotifyPanelChange(category?)` | Dispatches to `PrettyChat.subRefreshers[category]` (rebound by `Config.lua`). Pass `nil` to refresh every sub-page. Master-toggle changes (`"General"`) also cascade to every sub-page. Safe to call before `Config.lua` has installed the override — the original Schema.lua implementation no-ops gracefully. |
+| `Schema.NotifyPanelChange(category?)` | Invokes the closure registered for `category` via `RegisterRefresher`. Pass `nil` (or `"General"`) to fire every registered refresher. Safe to call before any sub-page has been opened — unregistered categories are no-ops. |
+| `Schema.RegisterRefresher(category, fn)` | Sub-page registration hook called by `Config.lua` on first `OnShow`. The closure should re-sync every visible widget on that page from the DB. |
 | `Schema.CATEGORY_ORDER` | Display order array. Imported by `Config.lua` (left-rail order), `PrettyChat.lua`'s `Test()` and `/pc list` (iteration order). The single source of truth — iterating `pairs(PrettyChatDefaults)` would give a non-deterministic order. |
 
 ## Reset semantics
@@ -83,6 +87,8 @@ PrettyChatDB.profile.categories[catName].enabled                     -- bool (ni
 PrettyChatDB.profile.categories[catName].strings[globalName]         -- string override (nil = use PrettyChat default)
 PrettyChatDB.profile.categories[catName].disabledStrings[globalName] -- true = disabled (absent / nil = enabled)
 ```
+
+**`enabled` defaults follow the `nil → true` contract.** Neither the addon-wide master toggle nor per-category `enabled` flags appear in the `defaults` table — they're created on first user write and read via `IsAddonEnabled` / `IsCategoryEnabled` which return `true` when the value is `nil`. This keeps SavedVariables empty until the user disables something, and it makes `ResetCategory` coherent: clearing a flag (`= nil`) genuinely returns it to default-true rather than relying on AceDB to re-merge a populated default.
 
 Only user-modified values are stored. The schema's auto-clear keeps `strings[...]` lean — it never collects "override that happens to equal the default".
 

@@ -34,6 +34,12 @@ local function addRow(row)
     byPath[row.path] = row
 end
 
+-- Row `set` closures are pure DB writes — they do NOT call
+-- PrettyChat:ApplyStrings() or Schema.NotifyPanelChange(). Both side
+-- effects live in Schema.Set so a future Schema.SetMany / preset-load
+-- can apply once per batch instead of once per row. Callers must go
+-- through Schema.Set; never invoke row.set(value) directly.
+
 -- The single addon-wide row. Lives under the "General" virtual
 -- category. When false, ApplyStrings restores every Blizzard original
 -- regardless of per-category / per-string toggles.
@@ -48,7 +54,6 @@ local function buildAddonEnabledRow()
         get      = function() return PrettyChat:IsAddonEnabled() end,
         set      = function(v)
             PrettyChat.db.profile.enabled = v and true or false
-            PrettyChat:ApplyStrings()
         end,
     })
 end
@@ -64,7 +69,6 @@ local function buildCategoryRow(category)
         get      = function() return PrettyChat:IsCategoryEnabled(category) end,
         set      = function(v)
             PrettyChat:EnsureCategoryDB(category).enabled = v and true or false
-            PrettyChat:ApplyStrings()
         end,
     })
 end
@@ -83,7 +87,6 @@ local function buildStringRows(category, globalName, strData)
             local catDB = PrettyChat:EnsureCategoryDB(category)
             if not catDB.disabledStrings then catDB.disabledStrings = {} end
             catDB.disabledStrings[globalName] = (not v) or nil
-            PrettyChat:ApplyStrings()
         end,
     })
 
@@ -104,7 +107,6 @@ local function buildStringRows(category, globalName, strData)
             else
                 catDB.strings[globalName] = v
             end
-            PrettyChat:ApplyStrings()
         end,
     })
 end
@@ -131,6 +133,30 @@ for _, category in ipairs(CATEGORY_ORDER) do
     end
 end
 
+-- Globals that PrettyChatDefaults registers under more than one category
+-- (today: LOOT_ITEM_CREATED_SELF and LOOT_ITEM_CREATED_SELF_MULTIPLE
+-- under both Loot and Tradeskill). Each registration produces a separate
+-- string_format row, both writing the same _G[GLOBALNAME] in
+-- ApplyStrings — the last category to iterate wins on /reload, and
+-- pairs() order is non-deterministic. The panel reads this map to
+-- decorate the per-string enable checkbox tooltip so the user can see
+-- the conflict in-page rather than discovering it via lost edits.
+Schema.crossRegisteredGlobals = {}
+do
+    local seen = {}
+    for _, r in ipairs(rows) do
+        if r.kind == "string_format" then
+            seen[r.globalName] = seen[r.globalName] or {}
+            seen[r.globalName][#seen[r.globalName] + 1] = r.category
+        end
+    end
+    for globalName, cats in pairs(seen) do
+        if #cats > 1 then
+            Schema.crossRegisteredGlobals[globalName] = cats
+        end
+    end
+end
+
 -- ---------------------------------------------------------------------
 -- Public API
 -- ---------------------------------------------------------------------
@@ -145,29 +171,37 @@ function Schema.Get(path)
     return row.get()
 end
 
--- NotifyPanelChange invalidates the AceConfigDialog cache for one
--- category (or every category if `category` is nil). An open panel
--- re-renders immediately; a closed panel re-renders next time it's
--- opened. Safe to call when the registry isn't loaded yet — no-op.
+-- Refresher dispatch. Config.lua registers a closure per sub-page on
+-- first OnShow via Schema.RegisterRefresher; NotifyPanelChange invokes
+-- the matching closure (or every closure when the master toggle moves —
+-- per-string disabled state depends on the master). Sub-pages that have
+-- never been opened have no entry, which is correct: their first OnShow
+-- builds widgets seeded from the live DB, so they cannot show stale state.
+Schema.refreshers = {}
+
+function Schema.RegisterRefresher(category, fn)
+    Schema.refreshers[category] = fn
+end
+
 function Schema.NotifyPanelChange(category)
-    local registry = LibStub("AceConfigRegistry-3.0", true)
-    if not registry then return end
-    if category then
-        registry:NotifyChange("PrettyChat_" .. category)
-    else
-        for _, c in ipairs(CATEGORY_ORDER) do
-            registry:NotifyChange("PrettyChat_" .. c)
-        end
+    if category == "General" or category == nil then
+        for _, fn in pairs(Schema.refreshers) do pcall(fn) end
+        return
     end
+    local fn = Schema.refreshers[category]
+    if fn then pcall(fn) end
 end
 
 -- Set is the single write path for all schema-backed values. Both the
--- AceConfig widgets and the /pc set slash command go through here, so
--- a value change in either surface notifies the other.
+-- panel widgets and the /pc set slash command go through here, so
+-- a value change in either surface notifies the other. Owns the two
+-- post-write side effects (ApplyStrings + NotifyPanelChange) so row
+-- closures can stay pure DB writes.
 function Schema.Set(path, value)
     local row = byPath[path]
     if not row then return false end
     row.set(value)
+    PrettyChat:ApplyStrings()
     Schema.NotifyPanelChange(row.category)
     return true
 end
@@ -183,11 +217,21 @@ end
 -- Case-insensitive category lookup. Returns the canonical PascalCase
 -- name from CATEGORY_ORDER if found, nil otherwise. Used by slash
 -- commands so `/pc reset loot` works the same as `/pc reset Loot`.
+-- Falls back to an unambiguous case-insensitive prefix match (e.g.
+-- `Loo` → `Loot`); ambiguous prefixes return nil so the caller surfaces
+-- the same "unknown category" error rather than guessing.
 function Schema.ResolveCategory(name)
     if type(name) ~= "string" or name == "" then return nil end
     local lower = name:lower()
     for _, c in ipairs(CATEGORY_ORDER) do
         if c:lower() == lower then return c end
     end
-    return nil
+    local matched
+    for _, c in ipairs(CATEGORY_ORDER) do
+        if c:lower():find(lower, 1, true) == 1 then
+            if matched then return nil end
+            matched = c
+        end
+    end
+    return matched
 end

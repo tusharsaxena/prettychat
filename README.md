@@ -32,7 +32,7 @@ Everything is configurable through the standard Blizzard Settings panel and thro
 |---------|--------|
 | `/pc` / `/pc help` | Show the slash-command help in chat |
 | `/pc config` | Open the settings panel (refuses during combat — Blizzard's category-switch is protected) |
-| `/pc list` | List every setting (long; ~170 rows). Pass a category name to filter, e.g. `/pc list Loot` |
+| `/pc list` | List every setting (long; ~170 rows). Pass a category name to filter, e.g. `/pc list Loot` (case-insensitive; accepts an unambiguous prefix like `Loo`) |
 | `/pc get <path>` | Print one setting's current value (e.g. `/pc get Loot.LOOT_ITEM_SELF.enabled`) |
 | `/pc set <path> <value>` | Set one setting (e.g. `/pc set Loot.enabled false`). Bools accept `true/false/on/off/yes/no/1/0` |
 | `/pc reset <Category>` | Reset one category to defaults |
@@ -50,7 +50,7 @@ PrettyChat appears in the Blizzard Settings panel under **Ka0s Pretty Chat**. Th
 *   **Reputation** — 14 strings for faction standing changes (increases, decreases, threshold transitions).
 *   **Experience** — 20 strings covering all `COMBATLOG_XPGAIN_*` variants (rested, group, raid, …).
 *   **Honor** — 6 strings for honor and combat-log honor awards.
-*   **Tradeskill** — 8 strings for crafted-item creation and lock opening.
+*   **Tradeskill** — 8 strings for crafted-item creation and lock opening (two of these — `LOOT_ITEM_CREATED_SELF` / `_MULTIPLE` — are also registered under Loot; the last category to apply wins).
 *   **Misc** — 2 catch-all strings (quest reward XP, zone exploration).
 
 Each category sub-page lists every format string it owns. Each string is laid out as a labeled section heading (the friendly name, e.g. "Battle Pet Loot") followed by a 40/60 two-column grid: left column has an **Enable** checkbox, the GlobalString key caption (e.g. `LOOT_ITEM_SELF`), and a per-string **Reset** button; right column has labeled edit boxes for the **Original** Blizzard format (read-only), the editable **New** PrettyChat replacement, and a **Preview** that always reflects the saved value with sample arguments substituted in. Each category page also has a **Defaults** button in the page header that resets every string in that category. Disabled strings revert to Blizzard's original at runtime.

@@ -77,17 +77,19 @@ See [schema.md](./schema.md) for the row kinds, the single write path, and the a
 ns.Schema.RowsByCategory(category)             -- filtered subset for one category
 ns.Schema.FindByPath(path)                     -- O(1) lookup by dot path
 ns.Schema.Get(path)                            -- read through the row's get() closure
-ns.Schema.Set(path, value)                     -- write through the row's set() closure → ApplyStrings → NotifyPanelChange
-ns.Schema.ResolveCategory(name)                -- case-insensitive "loot" → "Loot"
-ns.Schema.NotifyPanelChange(category?)         -- dispatches to PrettyChat.subRefreshers[category] (rebound by Config.lua); nil → all
-                                               -- "General" cascades to all sub-pages (per-string disabled state depends on master)
+ns.Schema.Set(path, value)                     -- DB write (row's set closure) → ApplyStrings → NotifyPanelChange
+ns.Schema.ResolveCategory(name)                -- case-insensitive "loot" → "Loot"; falls back to unambiguous prefix
+ns.Schema.NotifyPanelChange(category?)         -- invokes the closure registered for `category`; nil or "General" runs every closure
+                                               -- (per-string disabled state depends on master, so master changes cascade)
+ns.Schema.RegisterRefresher(category, fn)      -- Config.lua registers a per-sub-page refresh closure on first OnShow
+ns.Schema.crossRegisteredGlobals               -- map of globalName → {Cat1, Cat2, …} for globals registered under >1 category
 ns.Schema.CATEGORY_ORDER                       -- canonical display order (also drives /pc list, panel left-rail)
 ```
 
 ### `ns.Print` (`PrettyChat.lua`)
 
 ```lua
-ns.Print(msg)   -- DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[PC]|r " .. msg)
+ns.Print(msg)   -- DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. msg)   where PREFIX is built from ns.Const.Color.cyan
 ```
 
 The single chokepoint for addon chat output. Use this, not raw `print()` or `self:Print()`, so the prefix and color stay uniform across files.
@@ -98,12 +100,12 @@ The single chokepoint for addon chat output. Use this, not raw `print()` or `sel
 
 `PrettyChat.toc` is the source of truth. Order is dependency, not alphabetical:
 
-1. Ace3 libraries — LibStub, CallbackHandler-1.0, AceAddon-3.0, AceDB-3.0, AceConsole-3.0, AceGUI-3.0, AceConfig-3.0.
+1. Ace3 libraries — LibStub, CallbackHandler-1.0, AceAddon-3.0, AceDB-3.0, AceConsole-3.0, AceGUI-3.0. (`Libs/AceConfig-3.0/` is vendored on disk but no longer loaded by the TOC — re-add the load line if a future feature needs it.)
 2. `GlobalStrings/GlobalStrings_001.lua` … `_010.lua` — populates `PrettyChatGlobalStrings` eagerly so the panel can resolve "Original" values without an explicit load step.
 3. `Constants.lua` — populates `ns.Const` with panel layout constants. Side-effect-free.
 4. `Defaults.lua` — populates `PrettyChatDefaults`.
 5. `PrettyChat.lua` — creates the AceAddon object, defines `ns.Print` + `ns.RenderSample`, registers slash commands. **Every later file assumes the addon object exists** (`LibStub("AceAddon-3.0"):GetAddon("PrettyChat")`).
 6. `Schema.lua` — builds `rows` / `byPath` from `PrettyChatDefaults` (which is loaded earlier). Closures bind to live values.
-7. `Config.lua` — registers the parent canvas-layout category + one sub-page per category. Defers AceGUI body rendering until each panel's first `OnShow`. Overrides `ns.Schema.NotifyPanelChange`.
+7. `Config.lua` — exposes `ns.Config.RegisterPanels`. Called from `PrettyChat:OnEnable`, it registers the parent canvas-layout category + one sub-page per category. Defers AceGUI body rendering until each panel's first `OnShow`; that `OnShow` calls `ns.Schema.RegisterRefresher(category, refreshFn)` so `Schema.NotifyPanelChange` can re-sync the page after a write.
 
 If you add a new file, put it in the right place in `PrettyChat.toc`.

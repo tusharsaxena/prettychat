@@ -32,7 +32,7 @@ Public surfaces are exposed on `ns`:
 | Member | Set by | Used by |
 |--------|--------|---------|
 | `ns.Print(msg)` | `PrettyChat.lua` | every file (chat output chokepoint) |
-| `ns.Schema` | `Schema.lua` | `PrettyChat.lua` (slash dispatch), `Config.lua` (every widget get/set; rebinds `Schema.NotifyPanelChange` to a refresher dispatch) |
+| `ns.Schema` | `Schema.lua` | `PrettyChat.lua` (slash dispatch), `Config.lua` (every widget get/set; registers a per-sub-page refresh closure via `Schema.RegisterRefresher` on first `OnShow`) |
 | `ns.Const` | `Constants.lua` | `Config.lua` (panel padding / header height / spacers) |
 | `ns.RenderSample(fmt)` | `PrettyChat.lua` | `Config.lua` (per-string Preview EditBox) |
 | `ns.COMMANDS` | `PrettyChat.lua` | `Config.lua` (parent page's slash-command list) |

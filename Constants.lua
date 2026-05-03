@@ -36,3 +36,18 @@ Const.ROW_VSPACER = 8
 -- Per-string entry — vertical gap that bottoms each string entry and
 -- keeps adjacent strings from butting against each other.
 Const.STRING_VSPACER = 14
+
+-- Single source for the chat-color escapes used across PrettyChat.lua
+-- (slash output, [PC] prefix, Test header/footer) and Config.lua (panel
+-- captions, alias label). `cyan` is the [PC] prefix color — the cyan
+-- /reset pair is the addon's brand mark and must not change without a
+-- visual review.
+Const.Color = {
+    gold   = "|cffffd700",
+    grey   = "|cffaaaaaa",
+    red    = "|cffff5050",
+    yellow = "|cffffff00",
+    white  = "|cffffffff",
+    cyan   = "|cff00ffff",
+    reset  = "|r",
+}

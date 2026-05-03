@@ -21,7 +21,7 @@ end
 
 `PrettyChat.optionsCategoryID = mainCategory:GetID()` is what `PrettyChat:OpenConfig()` passes to `Settings.OpenToCategory`. `PrettyChat.optionsCategory` (the category object itself) is what `expandMainCategory` walks for the left-tree disclosure toggle.
 
-Bootstrap waits for `PLAYER_LOGIN`, then calls `registerPanels()`. AceGUI body rendering is **deferred until the panel's first `OnShow`** — at PLAYER_LOGIN the body's frame width is zero, and AceGUI's `List` layout sizes children against the container's current width, so building too early produces a stack of misaligned widgets.
+`Config.lua` exposes `ns.Config.RegisterPanels`; `PrettyChat:OnEnable` calls it after the snapshot/`ApplyStrings` pair. AceGUI body rendering is **deferred until the panel's first `OnShow`** — at registration time the body's frame width is zero, and AceGUI's `List` layout sizes children against the container's current width, so building too early produces a stack of misaligned widgets.
 
 ## Unified per-page header
 
@@ -110,22 +110,31 @@ ns.Schema.Set(formatPath, value:gsub("||", "|"))          -- on commit
 
 ## NotifyPanelChange refresh dispatch
 
-`Config.lua` overrides `ns.Schema.NotifyPanelChange` (originally an AceConfigDialog cache invalidator) with a per-category refresher dispatch:
+`Schema.NotifyPanelChange(category)` invokes a per-sub-page refresh closure that `Config.lua` registers on first `OnShow`:
 
 ```lua
-function ns.Schema.NotifyPanelChange(category)
+-- Schema.lua
+Schema.refreshers = {}
+
+function Schema.RegisterRefresher(category, fn)
+    Schema.refreshers[category] = fn
+end
+
+function Schema.NotifyPanelChange(category)
     if category == "General" or category == nil then
-        for _, fn in pairs(PrettyChat.subRefreshers) do pcall(fn) end
+        for _, fn in pairs(Schema.refreshers) do pcall(fn) end
         return
     end
-    local fn = PrettyChat.subRefreshers[category]
+    local fn = Schema.refreshers[category]
     if fn then pcall(fn) end
 end
 ```
 
-Each category sub-page's body builder returns a `refresh` closure stored at `PrettyChat.subRefreshers[category]`. A `Schema.Set` from the panel widgets (callback) or the `/pc set` slash both end up calling `Schema.NotifyPanelChange(row.category)` — the closure walks every per-string `refresh` in that category and re-syncs widget values + disabled state from the DB.
+`Config.lua`'s sub-page builder returns a `refresh` closure; the panel's `OnShow` calls `Schema.RegisterRefresher(category, refresh)`. A `Schema.Set` from the panel widgets (callback) or the `/pc set` slash both end up calling `Schema.NotifyPanelChange(row.category)` — the registered closure walks every per-string `refresh` in that category and re-syncs widget values + disabled state from the DB.
 
 Master-toggle (`General.enabled`) changes cascade to every sub-page because per-string disabled state depends on the master.
+
+Sub-pages that have never been opened have no entry in `Schema.refreshers`. That's correct: their first `OnShow` builds widgets seeded from the live DB, so they cannot show stale state — there is nothing to refresh until the user has opened the page at least once.
 
 Programmatic `:SetValue`/`:SetText` on AceGUI widgets do **not** re-fire the user callbacks, so refresh is safe to call from inside a callback chain.
 
@@ -134,10 +143,9 @@ Programmatic `:SetValue`/`:SetText` on AceGUI widgets do **not** re-fire the use
 Both the General sub-page's "Test" button and the `/pc test` slash command call `PrettyChat:Test()` (in `PrettyChat.lua`). The function:
 
 1. Iterates every format string in every category — **regardless of master / per-category / per-string enable toggles**. The preview is for *seeing what your formats look like*, not for verifying which ones are currently applied to live chat.
-2. For each string, calls the local `buildSampleArgs(fmt)` — parses `%[flags][width][.precision]type` conversions and produces typed placeholders (`"Sample"` for `%s`, `42` for integer types, `1.5` for floats, `65` for `%c`, `"?"` for unknowns). `%%` escapes are stripped first.
-3. `pcall(string.format, fmt, unpack(args))` — a malformed format won't break the loop; it just gets skipped.
-4. Emits each sample line via `DEFAULT_CHAT_FRAME:AddMessage` **without** the `[PC]` prefix, so each rendered preview looks identical to a real loot/currency/XP chat message.
-5. Header and footer carry the `[PC]` prefix, bracketing the test block. Header includes a notice when `IsAddonEnabled()` is false. Footer reports the printed count (`"end of test output (N strings shown)"`).
+2. For each string, calls `ns.RenderSample(fmt)` — the same path the per-row Preview EditBox uses, so test output and panel preview can never drift on placeholder choices or positional-arg handling. `RenderSample` walks `%[n$][flags][width][.precision]type` conversions (positional `%n$type` is honored), produces typed placeholders (`"Sample"` for `%s`, `42` for integer types, `1.5` for floats, `65` for `%c`, `"?"` for unknowns), strips `%%` escapes first, and `pcall`s `string.format`.
+3. On success, emits the rendered line via `DEFAULT_CHAT_FRAME:AddMessage` **without** the `[PC]` prefix, so each preview looks identical to a real loot/currency/XP chat message. On failure, emits a grey `(<Category>.<GLOBALNAME> format error: <msg>)` line so the user can see *which* string is broken.
+4. Header and footer carry the `[PC]` prefix, bracketing the test block. Header includes a notice when `IsAddonEnabled()` is false. Footer reports both counts: `"end of test output (N strings shown, K errored)"` (the `K errored` clause is omitted when zero).
 
 `ns.RenderSample(fmt)` (also exposed from `PrettyChat.lua`) is the single-string version used by the per-row sample label: returns `(rendered_string)` on success or `(nil, err)` on `string.format` failure.
 
@@ -164,3 +172,5 @@ The default formats in `Defaults.lua` use this palette. Edit `Defaults.lua` dire
 | `aaaaaa` | Grey — panel captions, slash alias note, default-state sample line |
 
 WoW color escapes use `|cAARRGGBB...|r` (AA = alpha, always `ff`). The house style for new defaults is `Category | Context | Source | +/- value`, each segment color-coded.
+
+Addon UI escapes (slash output, `[PC]` prefix, panel grey captions, command-list colors) are centralized in `ns.Const.Color` (`Constants.lua`) — `cyan`/`reset` build the `[PC]` prefix, `yellow`/`white` colour the slash-help command names + descriptions, `grey` colours the alias note and the per-string GLOBALNAME caption. Edit `Constants.lua` to retune the addon UI palette; this table above governs the chat-message palette.

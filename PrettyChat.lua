@@ -2,7 +2,8 @@ local addonName, ns = ...
 
 local PrettyChat = LibStub("AceAddon-3.0"):NewAddon("PrettyChat", "AceConsole-3.0")
 
-local PREFIX = "|cff00ffff[PC]|r "
+local Color  = ns.Const.Color
+local PREFIX = Color.cyan .. "[PC]" .. Color.reset .. " "
 local VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata
                  and C_AddOns.GetAddOnMetadata(addonName, "Version")) or "?"
 
@@ -12,7 +13,13 @@ end
 
 local defaults = {
     profile = {
-        enabled    = true,   -- addon-wide master toggle (General.enabled in Schema)
+        -- Addon-wide and per-category `enabled` flags are intentionally
+        -- absent. IsAddonEnabled / IsCategoryEnabled treat `nil` as
+        -- default-true (see docs/schema.md), which keeps SavedVariables
+        -- empty until the user disables something. The empty
+        -- `categories` table is documentation-only — AceDB never merges
+        -- {} into user-keyed sub-tables, so removing this line would be
+        -- semantically identical.
         categories = {},
     },
 }
@@ -32,32 +39,51 @@ function PrettyChat:OnEnable()
         end
     end
     self:ApplyStrings()
+
+    -- Settings.RegisterCanvasLayoutCategory is allowed in OnEnable for a
+    -- non-LoD addon (OnEnable fires after the Settings API is live and
+    -- after PLAYER_LOGIN). Folding panel registration into the AceAddon
+    -- lifecycle removes Config.lua's parallel PLAYER_LOGIN bootstrap.
+    if ns.Config and ns.Config.RegisterPanels then
+        ns.Config.RegisterPanels()
+    end
 end
 
 -- Expand the parent category in the Blizzard Settings left tree so
 -- every sub-page is visible. Wrapped in pcall: SettingsPanel internals
 -- (CategoryList, GetCategoryEntry, SetExpanded) are private API and
--- could shift between patches; if any call goes missing we just open
--- the panel without forcing expansion rather than erroring out.
+-- could shift between patches; if any call goes missing we return false
+-- so OpenConfig can surface a one-time grey notice rather than silently
+-- absorbing the regression.
 local function expandMainCategory(cat)
-    if not (cat and SettingsPanel) then return end
-    pcall(function()
+    if not (cat and SettingsPanel) then return false end
+    local ok, expanded = pcall(function()
         local list = SettingsPanel.GetCategoryList
             and SettingsPanel:GetCategoryList()
             or SettingsPanel.CategoryList
-        if not (list and list.GetCategoryEntry) then return end
+        if not (list and list.GetCategoryEntry) then return false end
         local entry = list:GetCategoryEntry(cat)
         if entry and entry.SetExpanded then
             entry:SetExpanded(true)
+            return true
         end
+        return false
     end)
+    return ok and expanded
 end
 
 function PrettyChat:OpenConfig()
     if not (Settings and Settings.OpenToCategory) then return end
     if not self.optionsCategoryID then return end
-    Settings.OpenToCategory(self.optionsCategoryID)
-    expandMainCategory(self.optionsCategory)
+    local opened = Settings.OpenToCategory(self.optionsCategoryID)
+    if opened == false then
+        ns.Print(Color.grey .. "could not open settings panel — category not registered" .. Color.reset)
+        return
+    end
+    if not expandMainCategory(self.optionsCategory) and not self._expandWarned then
+        self._expandWarned = true
+        ns.Print(Color.grey .. "(could not auto-expand the Pretty Chat sub-tree — click the parent row to expand)" .. Color.reset)
+    end
 end
 
 function PrettyChat:GetStringValue(category, globalName)
@@ -142,10 +168,12 @@ end
 -- Test — synthesize sample chat messages from each active format string
 -- ---------------------------------------------------------------------
 --
--- Walks the format string for printf-style conversions (%[flags][width]
--- [.precision]type) and returns a list of placeholder values typed to
--- match each conversion. `%%` escapes are stripped first so they don't
--- confuse the gmatch.
+-- Walks the format string for printf-style conversions (%[n$][flags]
+-- [width][.precision]type) and returns a list of placeholder values
+-- typed to match each conversion. `%%` escapes are stripped first so
+-- they don't confuse the gmatch. Positional `%n$type` is honored so
+-- non-enUS locales (which use positional rearrangement freely) preview
+-- correctly instead of failing string.format.
 local function sampleArg(conversion)
     conversion = conversion:lower()
     if conversion == "s" then
@@ -164,20 +192,40 @@ end
 local function buildSampleArgs(fmt)
     local clean = fmt:gsub("%%%%", "")
     local args = {}
-    for ftype in clean:gmatch("%%[%-+ #0]*%d*%.?%d*([%a])") do
-        args[#args + 1] = sampleArg(ftype)
+    local appendIdx = 0
+    local maxIdx    = 0
+    for posCap, ftype in clean:gmatch("%%(%d*%$?)[%-+ #0]*%d*%.?%d*([%a])") do
+        local val = sampleArg(ftype)
+        if posCap:sub(-1) == "$" then
+            local idx = tonumber(posCap:sub(1, -2))
+            if idx and idx > 0 then
+                args[idx] = val
+                if idx > maxIdx then maxIdx = idx end
+            end
+        else
+            appendIdx = appendIdx + 1
+            args[appendIdx] = val
+            if appendIdx > maxIdx then maxIdx = appendIdx end
+        end
     end
-    return args
+    -- Fill positional gaps so unpack delivers a dense range. Without
+    -- this, `%3$s only` would leave args[1] and args[2] nil and
+    -- string.format would receive nils for those slots.
+    for i = 1, maxIdx do
+        if args[i] == nil then args[i] = "?" end
+    end
+    return args, maxIdx
 end
 
 -- Render a single format string with synthesized sample args, returning
 -- the rendered line (or nil + error message on string.format failure).
 -- Shared by `PrettyChat:Test()` and the per-string sample row in the
--- settings panel — keeps both in lockstep on placeholder choices.
+-- settings panel — keeps both in lockstep on placeholder choices and
+-- positional-arg handling.
 function ns.RenderSample(fmt)
     if type(fmt) ~= "string" or fmt == "" then return nil, "(empty format)" end
-    local args = buildSampleArgs(fmt)
-    local ok, result = pcall(string.format, fmt, unpack(args))
+    local args, n = buildSampleArgs(fmt)
+    local ok, result = pcall(string.format, fmt, unpack(args, 1, n))
     if ok then return result end
     return nil, result
 end
@@ -193,12 +241,12 @@ end
 -- would. Header and footer ARE prefixed, so the test block is
 -- bracketed visually.
 function PrettyChat:Test()
-    DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[PC]|r |cffffffffsample of every format string (preview ignores enable toggles):|r")
+    DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. note("sample of every format string (preview ignores enable toggles):"))
     if not self:IsAddonEnabled() then
-        DEFAULT_CHAT_FRAME:AddMessage("|cff00ffff[PC]|r |cffffffff(addon is currently disabled — these formats aren't being applied to live chat)|r")
+        DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. note("(addon is currently disabled — these formats aren't being applied to live chat)"))
     end
 
-    local printed = 0
+    local printed, errored = 0, 0
     for _, category in ipairs(ns.Schema.CATEGORY_ORDER) do
         local catData = PrettyChatDefaults[category]
         if catData then
@@ -209,18 +257,26 @@ function PrettyChat:Test()
             table.sort(sortedNames)
             for _, globalName in ipairs(sortedNames) do
                 local fmt = self:GetStringValue(category, globalName)
-                local args = buildSampleArgs(fmt)
-                local ok, result = pcall(string.format, fmt, unpack(args))
-                if ok then
-                    DEFAULT_CHAT_FRAME:AddMessage(result)
+                local rendered, err = ns.RenderSample(fmt)
+                if rendered then
+                    DEFAULT_CHAT_FRAME:AddMessage(rendered)
                     printed = printed + 1
+                else
+                    DEFAULT_CHAT_FRAME:AddMessage(Color.grey
+                        .. ("(%s.%s format error: %s)"):format(category, globalName, tostring(err))
+                        .. Color.reset)
+                    errored = errored + 1
                 end
             end
         end
     end
 
-    DEFAULT_CHAT_FRAME:AddMessage(("|cff00ffff[PC]|r |cffffffffend of test output (%d %s shown)|r")
-        :format(printed, printed == 1 and "string" or "strings"))
+    local footer = ("end of test output (%d %s shown"):format(
+        printed, printed == 1 and "string" or "strings")
+    if errored > 0 then
+        footer = footer .. (", %d errored"):format(errored)
+    end
+    DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. note(footer .. ")"))
 end
 
 -- ---------------------------------------------------------------------
@@ -232,8 +288,8 @@ end
 -- one row. The schema-driven get/set/list go through ns.Schema so the
 -- panel widgets and slash commands share a single write path.
 
-local cmd  = function(s) return "|cffffff00" .. s .. "|r" end
-local note = function(s) return "|cffffffff" .. s .. "|r" end
+local cmd  = function(s) return Color.yellow .. s .. Color.reset end
+local note = function(s) return Color.white  .. s .. Color.reset end
 
 local function trim(s)
     return (s or ""):gsub("^%s+", ""):gsub("%s+$", "")
@@ -242,7 +298,7 @@ end
 local function formatValue(v)
     if v == nil then return "nil" end
     if type(v) == "boolean" then return tostring(v) end
-    if type(v) == "string" then return ('"%s"'):format(v) end
+    if type(v) == "string" then return ('%q'):format(v) end
     return tostring(v)
 end
 

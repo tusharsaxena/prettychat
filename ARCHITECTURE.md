@@ -62,7 +62,8 @@ All vendored under `Libs/`:
 - AceDB-3.0
 - AceConsole-3.0
 - AceGUI-3.0
-- AceConfig-3.0 (vendored; not currently used at runtime — kept for future re-wiring without a TOC change)
+
+`Libs/AceConfig-3.0/` is vendored on disk but not loaded by the TOC — there is no live consumer today. Re-add the load line if a future feature needs it.
 
 `PrettyChat.toc`'s `## Interface:` line is `120000, 120001, 120005` (The War Within / Midnight / Retail). Classic / Classic Era are not yet supported.
 
@@ -70,7 +71,7 @@ All vendored under `Libs/`:
 
 `PrettyChat.toc` is the source of truth. Order is dependency, not alphabetical:
 
-1. Ace3 libraries — LibStub → CallbackHandler-1.0 → AceAddon-3.0 → AceDB-3.0 → AceConsole-3.0 → AceGUI-3.0 → AceConfig-3.0.
+1. Ace3 libraries — LibStub → CallbackHandler-1.0 → AceAddon-3.0 → AceDB-3.0 → AceConsole-3.0 → AceGUI-3.0.
 2. `GlobalStrings/GlobalStrings_001.lua` … `_010.lua` — populates `PrettyChatGlobalStrings` eagerly so the panel can resolve "Original" values without an explicit load step. See [docs/global-strings.md](./docs/global-strings.md) for why this is also packaged as a LoadOnDemand sub-addon.
 3. `Constants.lua` — populates `ns.Const` with panel layout constants (padding, header height, spacers). Side-effect-free; loads early so any later file can read `ns.Const.*` without an existence check.
 4. `Defaults.lua` — populates `PrettyChatDefaults`.
