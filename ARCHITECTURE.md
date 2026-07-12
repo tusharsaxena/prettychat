@@ -65,7 +65,7 @@ All vendored under `Libs/`:
 
 `Libs/AceConfig-3.0/` is vendored on disk but not loaded by the TOC — there is no live consumer today. Re-add the load line if a future feature needs it.
 
-`PrettyChat.toc`'s `## Interface:` line is `120000, 120001, 120005` (The War Within / Midnight / Retail). Classic / Classic Era are not yet supported.
+`PrettyChat.toc`'s `## Interface:` line is `120007` (Midnight / Retail). Classic / Classic Era are not yet supported.
 
 ## Load order
 

@@ -24,7 +24,7 @@ Where each responsibility lives in the source tree. Match this map to the actual
 
 ## Shared infrastructure
 
-- `PrettyChat.toc` — Interface line (`120000, 120001, 120005`), version, SavedVariables (`PrettyChatDB`), and file load order. Order is dependency order, not alphabetical: Libs → GlobalStrings chunks → `Constants.lua` → `Defaults.lua` → `PrettyChat.lua` → `Schema.lua` → `Config.lua`.
+- `PrettyChat.toc` — Interface line (`120007`), version, SavedVariables (`PrettyChatDB`), and file load order. Order is dependency order, not alphabetical: Libs → GlobalStrings chunks → `Constants.lua` → `Defaults.lua` → `PrettyChat.lua` → `Schema.lua` → `Config.lua`.
 - `Libs/` — vendored Ace3 + LibStub. Tracked in git (standard WoW addon practice).
 - `media/` — local copies of the logo + before/after screenshots. The README references CDN URLs, not these — they're kept around as source backups.
 - `.gitattributes` — forces CRLF on disk for all text files (overrides per-user `core.autocrlf`).
