@@ -1,8 +1,8 @@
 # GlobalStrings
 
-A searchable copy of Blizzard's GlobalStrings (~22,879 entries), split into 10 chunk files. The chunks populate a single global table, `PrettyChatGlobalStrings`.
+A searchable copy of Blizzard's GlobalStrings (~22,879 entries), split into 10 chunk files. The chunks populate the addon-private `ns.GlobalStrings` table (each chunk begins `local _, ns = ...; ns.GlobalStrings = ns.GlobalStrings or {}`).
 
-The chunks are loaded by **two** different TOCs — see `CLAUDE.md` → `## GlobalStrings Sub-Addon` for the dual-load story. In short:
+The chunks are loaded by **two** different TOCs — see [../docs/global-strings.md](../docs/global-strings.md) for the dual-load story. In short:
 
 - `PrettyChat.toc` loads `GlobalStrings_001.lua` … `GlobalStrings_010.lua` *eagerly at addon startup* so the Settings panel can show originals without an explicit load step.
 - `GlobalStrings/GlobalStrings.toc` packages the same chunks as a separate `LoadOnDemand: 1` sub-addon (`PrettyChat - GlobalStrings`); `GlobalStringSearch.lua`'s `EnsureLoaded()` calls `LoadAddOn("GlobalStrings")` but the call is effectively idempotent given the eager load above.
@@ -30,7 +30,7 @@ python3 GlobalStrings/split_globalstrings.py
 
 1. Prints letter distribution and target entries per chunk
 2. Computes 10 balanced groups of consecutive letters using a greedy algorithm
-3. Writes chunk files as `PrettyChatGlobalStrings["KEY"] = "value"` assignments
+3. Writes chunk files as `ns.GlobalStrings["KEY"] = "value"` assignments (with a `local _, ns = ...` header)
 4. Cleans up old `GlobalStrings_*.lua` files before writing new ones
 5. Updates `GlobalStrings.toc` with the new file list
 

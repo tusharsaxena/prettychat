@@ -43,7 +43,7 @@ Unknown commands and the empty input fall back to `printHelp`.
 | `/pc resetall` | Clear every category's overrides AND the addon-wide enabled flag. |
 | `/pc test` / `/pc test all` | Print a per-category Original-vs-Formatted diff for every format string. Output ignores enable toggles (same action as the General page's Test button). See [settings-panel.md](./settings-panel.md#the-test-preview). |
 | `/pc test category <name>` | Filter the diff to one category. Case-insensitive name with the same unambiguous-prefix lookup as `/pc reset` (`Schema.ResolveCategory`). |
-| `/pc test formatstring <NAME>` | Filter the diff to a single global. Input is uppercased then validated against `PrettyChatDefaults`. Globals registered under more than one category (e.g. `LOOT_ITEM_CREATED_SELF`) print under each — both registrations are shown. |
+| `/pc test formatstring <NAME>` | Filter the diff to a single global. Input is uppercased then validated against `ns.Defaults`. Globals registered under more than one category (e.g. `LOOT_ITEM_CREATED_SELF`) print under each — both registrations are shown. |
 | unknown command | Print the help index (with an "unknown command" warning first). |
 
 Output is colored: yellow (`|cffffff00`) for command names via the local `cmd()` helper, white (`|cffffffff`) for explanatory notes via `note()`. The header line includes the version banner.
@@ -74,7 +74,7 @@ Each command body is a small file-local function in `PrettyChat.lua`:
 | `setSetting(self, rest)` | Parse `<path> <value>`, look up the row, parse the value to the row's declared type (`bool` accepts seven aliases, `string` consumes the rest of the line), then call `ns.Schema.Set(path, newVal)`. Echoes the new value back via `ns.Schema.Get`. |
 | `runReset(self, rest)` | Resolve `<Category>` and call `PrettyChat:ResetCategory(matched)`. No in-chat confirmation — the command itself is the assertion. |
 | `runResetAll(self)` | Call `PrettyChat:ResetAll()`. No in-chat confirmation. |
-| `runTest(self, rest)` | Parse the first whitespace-separated token. Empty or `all` → `PrettyChat:Test()` (every string). `category <name>` → resolve via `Schema.ResolveCategory`, then `Test({kind="category", value=matched})`. `formatstring <NAME>` → uppercase input, validate against `PrettyChatDefaults`, then `Test({kind="formatstring", value=upper})`. Bad sub-token prints a four-line usage. |
+| `runTest(self, rest)` | Parse the first whitespace-separated token. Empty or `all` → `PrettyChat:Test()` (every string). `category <name>` → resolve via `Schema.ResolveCategory`, then `Test({kind="category", value=matched})`. `formatstring <NAME>` → uppercase input, validate against `ns.Defaults`, then `Test({kind="formatstring", value=upper})`. Bad sub-token prints a four-line usage. |
 
 `schemaReady()` guards each schema-touching command — prints `"schema not ready yet"` if `ns.Schema` hasn't loaded (shouldn't happen in practice given the TOC load order, but cheap to check).
 

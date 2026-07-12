@@ -1,6 +1,6 @@
 # Schema and storage
 
-`Schema.lua` is the single source of truth for what's settable. At file-load (after `Defaults.lua` and `PrettyChat.lua`) it iterates `PrettyChatDefaults` and builds a flat array of rows, one per settable value, exposed at `ns.Schema`.
+`Schema.lua` is the single source of truth for what's settable. At file-load (after `Defaults.lua` and `PrettyChat.lua`) it iterates `ns.Defaults` and builds a flat array of rows, one per settable value, exposed at `ns.Schema`.
 
 This doc covers: the four row kinds, the single write path that every settings mutation goes through, and the AceDB shape behind it.
 
@@ -10,10 +10,10 @@ Four row kinds, addressed by dot path:
 
 | Path | Kind | Type | Backed by |
 |------|------|------|-----------|
-| `General.enabled` | `addon_enabled` | bool | `db.profile.enabled` (addon-wide master toggle; `General` is a *virtual category* — no entry in `PrettyChatDefaults`) |
+| `General.enabled` | `addon_enabled` | bool | `db.profile.enabled` (addon-wide master toggle; `General` is a *virtual category* — no entry in `ns.Defaults`) |
 | `<Category>.enabled` | `category_enabled` | bool | `db.profile.categories[Cat].enabled` (via `IsCategoryEnabled` / `EnsureCategoryDB`) |
 | `<Category>.<GLOBALNAME>.enabled` | `string_enabled` | bool | `db.profile.categories[Cat].disabledStrings[NAME]` (**inverted**: `disabledStrings[NAME] = true` means *disabled*) |
-| `<Category>.<GLOBALNAME>.format` | `string_format` | string | `db.profile.categories[Cat].strings[NAME]` (with `PrettyChatDefaults[Cat].strings[NAME].default` fallback) |
+| `<Category>.<GLOBALNAME>.format` | `string_format` | string | `db.profile.categories[Cat].strings[NAME]` (with `ns.Defaults[Cat].strings[NAME].default` fallback) |
 
 Each row carries its own `get()` and `set(value)` closures. PrettyChat's storage layout doesn't map 1:1 onto the path structure — the inverted `disabledStrings` table, the virtual `General` category, the default-fallback for formats — so a generic dot-walker (KickCD's `Helpers.Resolve` style) doesn't fit. Closures are simpler than a special-case resolver.
 
@@ -46,7 +46,7 @@ Row `set()` closures are pure DB writes — they do **not** run `ApplyStrings` o
 For `string_format` rows specifically, the row's `set` closure stores `nil` (clears the override entry) when `value` matches the row's PrettyChat default:
 
 ```lua
-if v == PrettyChatDefaults[category].strings[globalName].default then
+if v == ns.Defaults[category].strings[globalName].default then
     catDB.strings[globalName] = nil
 else
     catDB.strings[globalName] = v
@@ -65,7 +65,7 @@ So writing a format back to its default value via `/pc set` or the panel acts as
 | `Schema.ResolveCategory(name)` | Case-insensitive PascalCase resolver — `/pc reset loot` finds `Loot`. Returns `nil` for unknowns. |
 | `Schema.NotifyPanelChange(category?)` | Invokes the closure registered for `category` via `RegisterRefresher`. Pass `nil` (or `"General"`) to fire every registered refresher. Safe to call before any sub-page has been opened — unregistered categories are no-ops. |
 | `Schema.RegisterRefresher(category, fn)` | Sub-page registration hook called by `Config.lua` on first `OnShow`. The closure should re-sync every visible widget on that page from the DB. |
-| `Schema.CATEGORY_ORDER` | Display order array. Imported by `Config.lua` (left-rail order), `PrettyChat.lua`'s `Test()` and `/pc list` (iteration order). The single source of truth — iterating `pairs(PrettyChatDefaults)` would give a non-deterministic order. |
+| `Schema.CATEGORY_ORDER` | Display order array. Imported by `Config.lua` (left-rail order), `PrettyChat.lua`'s `Test()` and `/pc list` (iteration order). The single source of truth — iterating `pairs(ns.Defaults)` would give a non-deterministic order. |
 
 ## Reset semantics
 
@@ -83,7 +83,7 @@ Both are reachable from:
 
 ```
 PrettyChatDB.profile.enabled                                         -- bool (addon-wide master toggle; nil = default true)
-PrettyChatDB.profile.categories[catName].enabled                     -- bool (nil = default true, sourced from PrettyChatDefaults[Cat].enabled)
+PrettyChatDB.profile.categories[catName].enabled                     -- bool (nil = default true, sourced from ns.Defaults[Cat].enabled)
 PrettyChatDB.profile.categories[catName].strings[globalName]         -- string override (nil = use PrettyChat default)
 PrettyChatDB.profile.categories[catName].disabledStrings[globalName] -- true = disabled (absent / nil = enabled)
 ```
@@ -113,6 +113,6 @@ Schema construction runs once at file-load (`Schema.lua`). The order matters:
 1. `buildAddonEnabledRow()` — adds the single `General.enabled` row.
 2. For each `category` in `CATEGORY_ORDER` (skipping `General`):
    - `buildCategoryRow(category)` — adds `<Cat>.enabled`.
-   - For each `globalName` in `PrettyChatDefaults[Cat].strings` (sorted alphabetically): `buildStringRows(...)` — adds `<Cat>.<NAME>.enabled` *and* `<Cat>.<NAME>.format`.
+   - For each `globalName` in `ns.Defaults[Cat].strings` (sorted alphabetically): `buildStringRows(...)` — adds `<Cat>.<NAME>.enabled` *and* `<Cat>.<NAME>.format`.
 
-Closures bind to live values: `PrettyChatDefaults` is populated by `Defaults.lua` (loaded earlier by the TOC) and the addon object exists (`PrettyChat.lua`'s `:NewAddon` ran before `Schema.lua`).
+Closures bind to live values: `ns.Defaults` is populated by `Defaults.lua` (loaded earlier by the TOC) and the addon object exists (`PrettyChat.lua`'s `:NewAddon` ran before `Schema.lua`).

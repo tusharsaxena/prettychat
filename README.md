@@ -3,6 +3,7 @@
 ![wow](https://img.shields.io/badge/WoW-Midnight_12.0.7-orange)
 ![CurseForge Version](https://img.shields.io/curseforge/v/919766)
 ![license](https://img.shields.io/badge/license-MIT-green)
+[![Ka0s Standard](https://img.shields.io/badge/Ka0s_Standard-compliant-blue)](https://github.com/tusharsaxena/WowAddonStandards)
 
 ![alt text](https://media.forgecdn.net/attachments/1659/647/prettychat-logo-v2-jpg.jpg)
 
@@ -55,15 +56,26 @@ PrettyChat appears in the Blizzard Settings panel under **Ka0s Pretty Chat**. Th
 
 Each category sub-page lists every format string it owns. Each string is laid out as a labeled section heading (the friendly name, e.g. "Battle Pet Loot") followed by a 40/60 two-column grid: left column has an **Enable** checkbox, the GlobalString key caption (e.g. `LOOT_ITEM_SELF`), and a per-string **Reset** button; right column has labeled edit boxes for the **Original** Blizzard format (read-only), the editable **New** PrettyChat replacement, and a **Preview** that always reflects the saved value with sample arguments substituted in. Each category page also has a **Defaults** button in the page header that resets every string in that category. Disabled strings revert to Blizzard's original at runtime.
 
-## Notes
+### Behavior
 
-A few user-facing behaviors worth knowing. Implementation details live in [ARCHITECTURE.md](ARCHITECTURE.md).
+A few user-facing behaviors worth knowing. Implementation details live in [ARCHITECTURE.md](docs/ARCHITECTURE.md).
 
 - **The master toggle wins.** `General → Enable PrettyChat` (or `/pc set General.enabled false`) restores every Blizzard original regardless of per-category and per-string state. Your customizations stay in the database, just unapplied.
 - **Three enable layers**, checked in this order: master → category → per-string. A string only renders with your format if all three are on.
 - **Edit format strings from the panel.** It shows raw escape codes (`|cAARRGGBB...|r`) and, whenever your value differs from the default, renders a sample line below the edit box on commit (Enter). Editing from chat is supported but you must double `|` → `||` (WoW's chat input interprets `|c…|r` as inline color escapes the moment you press Enter).
 - **Format specifiers must match Blizzard's.** Each Blizzard string has a fixed signature (`%s`, `%d`, `%.1f`, `%2$s`, etc.). Drop or reorder a `%`-conversion and the line errors at `string.format`. Copy from the panel's left (Original) edit box and only modify the surrounding text and color escapes.
 - **Reset paths.** One string back to PrettyChat's default: click the per-string **Reset** button in the panel (only shown when your value differs from the default), or set the format to its default text via `/pc set` — the schema clears overrides that match the default automatically. Whole category: the category page's header **Defaults** button or `/pc reset <Category>`. One string back to Blizzard's original: disable its per-string toggle (or `/pc set <Category>.<GLOBALNAME>.enabled false`). Everything: General → **Reset all to defaults** (popup-confirmed) or `/pc resetall`.
+
+## Testing
+
+PrettyChat ships a headless test harness that runs under stock Lua 5.1 with no WoW client — it loads the addon sources into a mock WoW environment and exercises the schema, sample renderer, apply pipeline, and migration runner.
+
+```sh
+lua tests/run.lua   # unit/characterization suites (exits non-zero on failure)
+luacheck .          # static analysis (config in .luacheckrc)
+```
+
+Both must be green before any commit. For in-game validation (panel rendering, live chat overrides, positional `%n$s` formats that stock Lua can't render), follow the manual [smoke-test suite](./docs/smoke-tests.md) — it lists which invariant each test guards.
 
 ## FAQ
 

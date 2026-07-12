@@ -1,21 +1,31 @@
 ## Interface: 120007
 ## Title: Ka0s |cffff0000P|cffff9900r|cffffff00e|cff00ff00t|cff00fffft|cff4a86e8y |cff0000ffC|cff9900ffh|cffff00ffa|cffefefeft|r
-## Version: 1.3.0
-## Author: aDd1kTeD2Ka0s
 ## Notes: Prettier chat messages
-## iconTexture: 2056011
+## Author: aDd1kTeD2Ka0s
+## Version: 1.3.0
+## IconTexture: 2056011
 ## SavedVariables: PrettyChatDB
+## OptionalDeps: Ace3, LibStub, CallbackHandler-1.0
 ## DefaultState: enabled
 ## Category-enUS: Chat & Communication
 ## X-License: MIT
+## X-Standard: https://github.com/tusharsaxena/WowAddonStandards
+## X-Curse-Project-ID: 919766
 
-Libs\LibStub\LibStub.lua
-Libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
-Libs\AceAddon-3.0\AceAddon-3.0.xml
-Libs\AceDB-3.0\AceDB-3.0.xml
-Libs\AceConsole-3.0\AceConsole-3.0.xml
-Libs\AceGUI-3.0\AceGUI-3.0.xml
+# Libraries (must load first)
+libs\LibStub\LibStub.lua
+libs\CallbackHandler-1.0\CallbackHandler-1.0.xml
+libs\AceAddon-3.0\AceAddon-3.0.xml
+libs\AceDB-3.0\AceDB-3.0.xml
+libs\AceConsole-3.0\AceConsole-3.0.xml
+libs\AceGUI-3.0\AceGUI-3.0.xml
 
+# Addon
+Compat.lua
+Locale.lua
+Constants.lua
+Defaults.lua
+Database.lua
 GlobalStrings\GlobalStrings_001.lua
 GlobalStrings\GlobalStrings_002.lua
 GlobalStrings\GlobalStrings_003.lua
@@ -26,9 +36,6 @@ GlobalStrings\GlobalStrings_007.lua
 GlobalStrings\GlobalStrings_008.lua
 GlobalStrings\GlobalStrings_009.lua
 GlobalStrings\GlobalStrings_010.lua
-
-Constants.lua
-Defaults.lua
 PrettyChat.lua
 Schema.lua
 Config.lua

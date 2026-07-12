@@ -1,4 +1,6 @@
-PrettyChatDefaults = {
+local addonName, ns = ...
+
+ns.Defaults = {
     Loot = {
         enabled = true,
         strings = {

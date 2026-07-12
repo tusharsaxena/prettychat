@@ -1,0 +1,14 @@
+# Packaging manifest for the BigWigs/CurseForge packager.
+# Libraries stay vendored under libs/ — no externals are pulled.
+package-as: PrettyChat
+
+ignore:
+  - audit
+  - docs
+  - tests
+  - reviews
+  - .luacheckrc
+  - .gitignore
+  - .gitattributes
+  - "*.bak"
+  - TODO.md

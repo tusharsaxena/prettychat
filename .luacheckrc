@@ -1,0 +1,57 @@
+-- Luacheck configuration for Ka0s Pretty Chat.
+-- Run:  luacheck .
+
+std = "lua51"
+max_line_length = false
+codes = true
+
+-- Vendored libraries, the audit bundle, the headless test harness, and
+-- the generated GlobalStrings data are not linted:
+--   * libs/ (and Libs/ until the PC-12 rename lands) — vendored Ace3.
+--   * GlobalStrings/ — machine-generated data + the ~1.6MB source dump.
+--   * tests/ — runs under stock Lua 5.1, not the WoW std set.
+exclude_files = {
+    "Libs",
+    "libs",
+    "GlobalStrings",
+    "audit",
+    "tests",
+    "reviews",
+}
+
+-- Ace3 methods take self/event params the addon does not always use;
+-- `addonName` is the standard `local addonName, ns = ...` idiom, kept for
+-- consistency even in files that only use `ns`.
+ignore = { "212/self", "212/event", "211/addonName" }
+
+-- Writable globals the addon owns.
+--   PrettyChatDB       — SavedVariables.
+--   StaticPopupDialogs — Blizzard table the addon registers a dialog on.
+globals = {
+    "PrettyChatDB",
+    "StaticPopupDialogs",
+}
+
+-- Blizzard / WoW API surface the addon reads.
+read_globals = {
+    "LibStub",
+    "C_AddOns",
+    "C_Timer",
+    "CreateFrame",
+    "Settings",
+    "SettingsPanel",
+    "StaticPopup_Show",
+    "DEFAULT_CHAT_FRAME",
+    "GameTooltip",
+    "InCombatLockdown",
+    "GetAddOnMetadata",
+    "UIParent",
+    "YES",
+    "NO",
+    -- Font objects referenced by name.
+    "GameFontNormal",
+    "GameFontNormalLarge",
+    "GameFontNormalHuge",
+    "GameFontHighlight",
+    "GameFontDisable",
+}

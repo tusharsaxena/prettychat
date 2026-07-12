@@ -1,13 +1,13 @@
 # GlobalStrings sub-tree
 
-`GlobalStrings/` ships a searchable copy of Blizzard's `GlobalStrings.lua` (~22,879 entries), split into 10 chunk files by first letter of key. The chunks populate a single global table, `PrettyChatGlobalStrings`.
+`GlobalStrings/` ships a searchable copy of Blizzard's `GlobalStrings.lua` (~22,879 entries), split into 10 chunk files by first letter of key. The chunks populate the addon-private `ns.GlobalStrings` table (each chunk begins `local _, ns = ...; ns.GlobalStrings = ns.GlobalStrings or {}` — no `_G` global is created; PC-14).
 
 ## Two TOCs reference these chunks
 
 This is intentional, but worth flagging because the historical name "LoadOnDemand sub-addon" is misleading about runtime behavior.
 
-- **`PrettyChat.toc`** loads `GlobalStrings_001.lua` … `GlobalStrings_010.lua` *eagerly at addon startup* (load order: after `Libs/`, before `Defaults.lua`). This populates `PrettyChatGlobalStrings` so `Config.lua`'s "Original Format String" disabled input can resolve every key without an explicit load step.
-- **`GlobalStrings/GlobalStrings.toc`** is a separate `LoadOnDemand: 1` sub-addon (`PrettyChat - GlobalStrings`, version `1.1.0`) that *also* loads the same chunks. Nothing in the addon currently calls `C_AddOns.LoadAddOn("GlobalStrings")` — the LoD path is dormant — but the sub-addon TOC stays packaged so a future caller can re-introduce on-demand loading without a re-split.
+- **`PrettyChat.toc`** loads `GlobalStrings_001.lua` … `GlobalStrings_010.lua` *eagerly at addon startup* (load order: after `libs/`, before `Defaults.lua`). This populates `ns.GlobalStrings` so `Config.lua`'s "Original Format String" disabled input can resolve every key without an explicit load step.
+- **`GlobalStrings/GlobalStrings.toc`** is a separate `LoadOnDemand: 1` sub-addon (`PrettyChat - GlobalStrings`, version `1.1.0`) that *also* loads the same chunks. Nothing in the addon currently calls `C_AddOns.LoadAddOn("GlobalStrings")` — the LoD path is dormant — but the sub-addon TOC stays packaged so a future caller can re-introduce on-demand loading without a re-split. Note that after PC-14 the chunks key off `...`, so under the LoD sub-addon they populate **that sub-addon's** private `ns.GlobalStrings`, not PrettyChat's; a future re-activation would need to read the data back from the sub-addon's namespace (or the chunks would need a shared accessor).
 
 The redundant load path exists for historical reasons: the sub-addon was originally LoD-only, then the main TOC was given the chunks directly when the Settings panel started rendering originals at panel-open time. The LoD packaging now mostly serves as a guard for a future world where the eager load is removed (e.g. to cut startup memory).
 
@@ -16,16 +16,16 @@ The redundant load path exists for historical reasons: the sub-addon was origina
 | Path | Purpose |
 |------|---------|
 | `GlobalStrings/GlobalStrings.lua` | Full Blizzard reference (~1.6 MB, source file). **Not loaded by any TOC** — only used as input to `split_globalstrings.py`. |
-| `GlobalStrings/GlobalStrings_001.lua` … `_010.lua` | Chunk files split by first letter of key. Each emits `PrettyChatGlobalStrings["KEY"] = "value"` assignments. |
+| `GlobalStrings/GlobalStrings_001.lua` … `_010.lua` | Chunk files split by first letter of key. Each emits `ns.GlobalStrings["KEY"] = "value"` assignments. |
 | `GlobalStrings/GlobalStrings.toc` | LoadOnDemand sub-addon TOC. |
 | `GlobalStrings/split_globalstrings.py` | Splitter script — re-run after a WoW patch. |
 | `GlobalStrings/README.md` | Splitter usage instructions. |
 
-## The `PrettyChatGlobalStrings` global
+## The `ns.GlobalStrings` table
 
 Populated eagerly at addon load. Keyed by Blizzard's `GLOBALNAME` constants, valued with the Blizzard-default format string (the same string `_G[GLOBALNAME]` would return at addon load time, *before* PrettyChat overrides anything).
 
-This is the same data PrettyChat snapshots into `self.originalStrings` at `OnEnable` for the "restore on disable" path — but `originalStrings` only covers keys mentioned in `PrettyChatDefaults` (~81 entries), while `PrettyChatGlobalStrings` carries the full ~22,879. The extra entries support the panel's "Original Format String" display for any global key, even ones the user has added to `Defaults.lua` since the addon last shipped.
+This is the same data PrettyChat snapshots into `self.originalStrings` at `OnEnable` for the "restore on disable" path — but `originalStrings` only covers keys mentioned in `ns.Defaults` (~81 entries), while `ns.GlobalStrings` carries the full ~22,879. The extra entries support the panel's "Original Format String" display for any global key, even ones the user has added to `Defaults.lua` since the addon last shipped.
 
 ## Regenerating chunks after a WoW patch
 
@@ -39,12 +39,12 @@ The script:
 1. Parses the source for `KEY = "value";` entries (ignoring `_G["KEY"]` forms).
 2. Computes 10 balanced groups of consecutive letters using a greedy algorithm (so each chunk file is roughly the same size — keeps load times even).
 3. Cleans up old `GlobalStrings_*.lua` files.
-4. Writes the new chunk files as `PrettyChatGlobalStrings["KEY"] = "value"` assignments.
+4. Writes the new chunk files as `ns.GlobalStrings["KEY"] = "value"` assignments.
 5. Updates `GlobalStrings/GlobalStrings.toc`'s file list to match.
 
 The main `PrettyChat.toc` is **not** updated by the script — its `GlobalStrings\GlobalStrings_001.lua` … `_010.lua` lines are stable as long as the chunk count stays at 10. If the splitter is ever changed to produce a different number of chunks, update both TOCs.
 
-After regenerating, `/reload` in-game and verify the panel's "Original Format String" inputs still resolve for every category. If a Blizzard format-string signature changed (e.g. `%s` → `%2$s`), the corresponding `PrettyChatDefaults` entry in `Defaults.lua` needs updating to match — see [common-tasks.md](./common-tasks.md#fix-a-broken-format-string). Run the full [smoke-test suite](./smoke-tests.md) — a client patch can shift behavior anywhere in the override pipeline, not just in the keys you re-split.
+After regenerating, `/reload` in-game and verify the panel's "Original Format String" inputs still resolve for every category. If a Blizzard format-string signature changed (e.g. `%s` → `%2$s`), the corresponding `ns.Defaults` entry in `Defaults.lua` needs updating to match — see [common-tasks.md](./common-tasks.md#fix-a-broken-format-string). Run the full [smoke-test suite](./smoke-tests.md) — a client patch can shift behavior anywhere in the override pipeline, not just in the keys you re-split.
 
 ## Why split into chunks?
 

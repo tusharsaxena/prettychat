@@ -363,5 +363,5 @@ If a test fails:
 
 1. Capture the exact steps, the chat output, and any Lua error (BugSack or `/console scriptErrors 1`).
 2. Note the WoW client build (`/dump GetBuildInfo()`).
-3. Determine which invariant in [ARCHITECTURE.md § Invariants worth not breaking](../ARCHITECTURE.md#invariants-worth-not-breaking) the failure violates.
+3. Determine which invariant in [ARCHITECTURE.md](./ARCHITECTURE.md) (Settings Schema / Taint Notes / Known Limitations) the failure violates.
 4. File or update an issue per [README.md § Issues and feature requests](../README.md#issues-and-feature-requests). Don't ship a "fix" that just makes the test pass — root-cause first.

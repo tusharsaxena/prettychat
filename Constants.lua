@@ -23,6 +23,11 @@ Const.PANEL_HEADER_HEIGHT = 54
 -- Width of the per-panel "Defaults" button in the header.
 Const.PANEL_DEFAULTS_W    = 110
 
+-- Relative width for a pair of cell-filling side-by-side buttons in a
+-- Flow-layout row. Slightly under 0.5 so AceGUI's inter-widget padding
+-- doesn't wrap the second button onto a new line.
+Const.BUTTON_PAIR_REL     = 0.492
+
 -- AceGUI Heading widget height + breathing-room spacers above and
 -- below it. Skipped above the first heading on a page (the page header
 -- already provides whitespace).
@@ -52,3 +57,8 @@ Const.Color = {
     green  = "|cff40ff40",
     reset  = "|r",
 }
+
+-- Shared cyan [PC] chat tag. Single source for every module's chat
+-- output — ns.Print prepends it. Cyan is the addon's brand mark.
+Const.PREFIX = Const.Color.cyan .. "[PC]" .. Const.Color.reset .. " "
+ns.PREFIX    = Const.PREFIX

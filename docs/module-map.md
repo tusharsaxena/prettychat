@@ -5,7 +5,7 @@ Per-module roles + public APIs. Pair this with [override-pipeline.md](./override
 ## Subsystem diagram
 
 ```
-Defaults.lua  ──▶ PrettyChatDefaults (categories + format strings)
+Defaults.lua  ──▶ ns.Defaults (categories + format strings)
                     │
                     ├──▶ Schema.lua ──▶ ns.Schema   (rows[], byPath[], single write path)
                     │                       │
@@ -17,7 +17,7 @@ Defaults.lua  ──▶ PrettyChatDefaults (categories + format strings)
                                 ▼
                           _G[GLOBALNAME]   ◀── WoW chat code reads lazily on every line
 
-GlobalStrings/  ──▶ PrettyChatGlobalStrings (Blizzard reference, ~22,879 entries)
+GlobalStrings/  ──▶ ns.GlobalStrings (Blizzard reference, ~22,879 entries)
                        │
                        └──▶ Config.lua "Original Format String" disabled input
 ```
@@ -34,9 +34,14 @@ Public surfaces are exposed on `ns`:
 
 | Member | Set by | Used by |
 |--------|--------|---------|
-| `ns.Print(msg)` | `PrettyChat.lua` | every file (`Schema.lua` indirectly via `PrettyChat.*`, slash command bodies) |
+| `ns.Compat` | `Compat.lua` | `PrettyChat.lua`, `Config.lua` (`Compat.GetAddOnMetadata` — C_AddOns vs legacy global) |
+| `ns.L` | `Locale.lua` | `Config.lua`, `PrettyChat.lua` (English-key localization; `__index` returns the key) |
+| `ns.Const` / `ns.PREFIX` | `Constants.lua` | `Config.lua` (padding / header height / spacers / `Color` palette / `BUTTON_PAIR_REL`); `PrettyChat.lua` (`Color` palette; `ns.PREFIX` = shared cyan `[PC]` tag read by `ns.Print`) |
+| `ns.Defaults` | `Defaults.lua` | `Schema.lua`, `PrettyChat.lua`, `Config.lua` (category → format-string defaults) |
+| `ns.Database` | `Database.lua` | `PrettyChat.lua` (`OnInitialize` merges `global.schemaVersion` defaults + runs `RunMigrations`) |
+| `ns.GlobalStrings` | `GlobalStrings/` chunks | `Config.lua` ("Original Format String" display) |
+| `ns.Print(msg)` / `ns.Debug(tag, fmt, …)` / `ns.State` | `PrettyChat.lua` | every file (chat output chokepoint; `ns.Debug` gated on session-only `ns.State.debug`, toggled by `/pc debug`) |
 | `ns.Schema` | `Schema.lua` | `PrettyChat.lua` (slash dispatch), `Config.lua` (every widget get/set; registers a per-sub-page refresh closure via `Schema.RegisterRefresher` on first `OnShow`) |
-| `ns.Const` | `Constants.lua` | `Config.lua` (panel padding / header height / spacers / `Color` palette); `PrettyChat.lua` (`Color` palette: `cyan` for `[PC]` prefix, `yellow`/`white` for `cmd`/`note` helpers, `gold`+`green` for the `/pc test` Category header and Name/Original/Formatted labels, `grey` for inline error text) |
 | `ns.RenderSample(fmt)` | `PrettyChat.lua` | `Config.lua` (per-string Preview EditBox) |
 | `ns.COMMANDS` | `PrettyChat.lua` | `Config.lua` (parent page's slash-command list — keeps panel and `/pc help` in lockstep with one source) |
 | `ns.Config.RegisterPanels()` | `Config.lua` | `PrettyChat.lua` (`OnEnable` calls it after the snapshot/`ApplyStrings` pair, replacing the old `PLAYER_LOGIN` bootstrap frame) |
@@ -60,9 +65,9 @@ PrettyChat:ResetAll()                  -- clears every category + the addon-wide
 PrettyChat:Test(filter?)               -- prints a per-category Original-vs-Formatted block per string (ignores enable toggles); filter is nil | {kind="category", value=…} | {kind="formatstring", value=…}
 
 -- Read helpers (used by Schema closures, ApplyStrings, panel widgets)
-PrettyChat:GetStringValue(category, globalName)   -- user override falling back to PrettyChatDefaults
+PrettyChat:GetStringValue(category, globalName)   -- user override falling back to ns.Defaults
 PrettyChat:IsAddonEnabled()                       -- nil → default true
-PrettyChat:IsCategoryEnabled(category)            -- nil → default true (from PrettyChatDefaults)
+PrettyChat:IsCategoryEnabled(category)            -- nil → default true (from ns.Defaults)
 PrettyChat:IsStringEnabled(category, globalName)  -- false iff disabledStrings[NAME] == true
 PrettyChat:EnsureCategoryDB(category)             -- creates db.profile.categories[Cat] if missing, returns it
 
@@ -101,12 +106,15 @@ The single chokepoint for addon chat output. Use this, not raw `print()` or `sel
 
 `PrettyChat.toc` is the source of truth. Order is dependency, not alphabetical:
 
-1. Ace3 libraries — LibStub, CallbackHandler-1.0, AceAddon-3.0, AceDB-3.0, AceConsole-3.0, AceGUI-3.0. (`Libs/AceConfig-3.0/` is vendored on disk but no longer loaded by the TOC — re-add the load line if a future feature needs it.)
-2. `GlobalStrings/GlobalStrings_001.lua` … `_010.lua` — populates `PrettyChatGlobalStrings` eagerly so the panel can resolve "Original" values without an explicit load step.
-3. `Constants.lua` — populates `ns.Const` with panel layout constants. Side-effect-free.
-4. `Defaults.lua` — populates `PrettyChatDefaults`.
-5. `PrettyChat.lua` — creates the AceAddon object, defines `ns.Print` + `ns.RenderSample`, registers slash commands. **Every later file assumes the addon object exists** (`LibStub("AceAddon-3.0"):GetAddon("PrettyChat")`).
-6. `Schema.lua` — builds `rows` / `byPath` from `PrettyChatDefaults` (which is loaded earlier). Closures bind to live values.
-7. `Config.lua` — exposes `ns.Config.RegisterPanels`. Called from `PrettyChat:OnEnable`, it registers the parent canvas-layout category + one sub-page per category. Defers AceGUI body rendering until each panel's first `OnShow`; that `OnShow` calls `ns.Schema.RegisterRefresher(category, refreshFn)` so `Schema.NotifyPanelChange` can re-sync the page after a write.
+1. Ace3 libraries — LibStub, CallbackHandler-1.0, AceAddon-3.0, AceDB-3.0, AceConsole-3.0, AceGUI-3.0. (`AceConfig-3.0` was removed from `libs/` — no live consumer; re-vendor it if a future feature needs it.)
+2. `Compat.lua` — populates `ns.Compat` (metadata shim). Side-effect-free; loads first among addon files so any later file can call it.
+3. `Locale.lua` — populates `ns.L` (English-key metatable + enUS manifest).
+4. `Constants.lua` — populates `ns.Const` + `ns.PREFIX` with panel layout constants and the cyan tag. Side-effect-free.
+5. `Defaults.lua` — populates `ns.Defaults`.
+6. `Database.lua` — populates `ns.Database` (`SCHEMA_VERSION`, `global` defaults, `RunMigrations`).
+7. `GlobalStrings/GlobalStrings_001.lua` … `_010.lua` — populates `ns.GlobalStrings` eagerly so the panel can resolve "Original" values without an explicit load step.
+8. `PrettyChat.lua` — creates the AceAddon object, defines `ns.Print` / `ns.Debug` / `ns.RenderSample`, merges `ns.Database.defaults` + runs migrations in `OnInitialize`, registers slash commands. **Every later file assumes the addon object exists** (`LibStub("AceAddon-3.0"):GetAddon("PrettyChat")`).
+9. `Schema.lua` — builds `rows` / `byPath` from `ns.Defaults` (which is loaded earlier) and runs the load-time path validator. Closures bind to live values.
+10. `Config.lua` — exposes `ns.Config.RegisterPanels`. Called from `PrettyChat:OnEnable`, it registers the parent canvas-layout category + one sub-page per category. Defers AceGUI body rendering until each panel's first `OnShow`; that `OnShow` calls `ns.Schema.RegisterRefresher(category, refreshFn)` so `Schema.NotifyPanelChange` can re-sync the page after a write.
 
 If you add a new file, put it in the right place in `PrettyChat.toc`.

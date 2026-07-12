@@ -167,9 +167,14 @@ def main():
         letter_range = "".join(letters)
 
         with open(filepath, "w", encoding="utf-8", newline="\n") as f:
-            f.write("PrettyChatGlobalStrings = PrettyChatGlobalStrings or {}\n")
+            # Populate the addon-private ns.GlobalStrings (PC-14). Under the
+            # main PrettyChat.toc load, `...` yields PrettyChat's namespace;
+            # under the dormant LoadOnDemand sub-addon it yields that
+            # sub-addon's own (harmless) namespace.
+            f.write("local _, ns = ...\n")
+            f.write("ns.GlobalStrings = ns.GlobalStrings or {}\n")
             for key, value in items:
-                f.write(f'PrettyChatGlobalStrings["{key}"] = "{value}"\n')
+                f.write(f'ns.GlobalStrings["{key}"] = "{value}"\n')
 
         print(f"  {filename} [{letter_range}]: {len(items)} entries")
         chunk_filenames.append(filename)

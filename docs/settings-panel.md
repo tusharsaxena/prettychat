@@ -47,7 +47,7 @@ All layout dimensions live in `Constants.lua` (`ns.Const.PANEL_PADDING_X`, `PANE
 
 ## The virtual `General` sub-page
 
-`General` is a *virtual category* — no entry in `PrettyChatDefaults`, no per-string rows. It's built by `buildGeneralBody(ctx)` and hosts every actionable addon-wide control:
+`General` is a *virtual category* — no entry in `ns.Defaults`, no per-string rows. It's built by `buildGeneralBody(ctx)` and hosts every actionable addon-wide control:
 
 | Control | Wire-up |
 |---------|---------|

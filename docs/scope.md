@@ -18,7 +18,7 @@ These have been considered and explicitly declined. A change of heart needs an i
 - **Per-message rewriting / chat event hooks.** Everything routes through Blizzard's `string.format(_G[GLOBALNAME], ...)` path; the addon never sees individual messages.
 - **Localization plumbing for the default formats.** The shipped defaults are English. Users on other locales can rewrite any format from the panel — the override is stored verbatim — but the addon doesn't ship per-locale defaults.
 - **Per-character / per-class / per-realm profile UI.** AceDB is initialized with a single shared `Default` profile (`db = AceDB:New("PrettyChatDB", defaults, true)`). `AceDBOptions-3.0` is *not* wired in. Adding it is a small contribution if demand emerges — see [schema.md](./schema.md#profiles).
-- **Reordering / renaming categories.** The category set and display order live in `Schema.CATEGORY_ORDER`; the eight format-bearing categories mirror `PrettyChatDefaults`'s top-level keys.
+- **Reordering / renaming categories.** The category set and display order live in `Schema.CATEGORY_ORDER`; the eight format-bearing categories mirror `ns.Defaults`'s top-level keys.
 - **A "minimal" preset, themes, or palette swap.** The color palette is part of the default-format strings; users edit individual formats to recolor.
 - **Editing format strings via slash with raw `|`.** WoW chat input interprets `|c…|r` as inline color escapes the moment Enter is pressed. `/pc set ... <format>` requires double `||`. The settings panel is the recommended editing surface; chat-side editing is a power-user fallback.
 
@@ -30,7 +30,7 @@ Decisions made during requirements review and v1.x.x — these are settled, not 
 - **Three enable layers, evaluated in order.** addon → category → per-string. A string only renders with the user's format if all three are on. See [override-pipeline.md](./override-pipeline.md).
 - **Single shared profile.** `AceDB:New(..., true)` selects the `Default` profile for every character. No profile switcher in the panel.
 - **One sub-page per category.** Categories register as `Settings.RegisterCanvasLayoutSubcategory(parent, panel, displayName)`, nesting them under the parent in the addon list. Chosen over a right-pane tab strip so each category gets the full pane width for the side-by-side Original/New edit boxes.
-- **`General` is a virtual category.** No entry in `PrettyChatDefaults`; built by a dedicated `buildGeneralBody()` and stored as `db.profile.enabled` at the profile root (not under `db.profile.categories`). It owns the addon-wide toggle, Test, and Reset all to defaults.
+- **`General` is a virtual category.** No entry in `ns.Defaults`; built by a dedicated `buildGeneralBody()` and stored as `db.profile.enabled` at the profile root (not under `db.profile.categories`). It owns the addon-wide toggle, Test, and Reset all to defaults.
 - **Single write path through `Schema.Set`.** Both panel widget callbacks and `/pc set` go through the same row's `set()` closure. Panel and slash never drift.
 - **Auto-clear on default match.** For `string_format` rows, writing the value back to the PrettyChat default clears the override entry instead of storing a duplicate. `db.profile.categories[Cat].strings` never collects "override that happens to equal the default".
 - **Format-specifier signatures must match Blizzard's.** Each Blizzard string has a fixed signature (`%s`, `%d`, `%.1f`, `%2$s`, …); replacements must consume the same conversions in the same order or `string.format` errors at runtime. The panel's left edit box always shows Blizzard's exact original — copy from there.
@@ -41,4 +41,4 @@ Decisions made during requirements review and v1.x.x — these are settled, not 
 
 - User-facing behavior: [README.md](../README.md) — categories, slash command table, FAQ, troubleshooting.
 - Engineer working notes: [../CLAUDE.md](../CLAUDE.md) — hard rules, response style, working environment.
-- High-level architecture map: [../ARCHITECTURE.md](../ARCHITECTURE.md).
+- High-level architecture map: [ARCHITECTURE.md](./ARCHITECTURE.md).

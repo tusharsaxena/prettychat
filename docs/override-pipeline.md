@@ -11,7 +11,7 @@ OnEnable                                            ApplyStrings (every settings
 snapshot Blizzard originals                          for each (category, globalName):
    self.originalStrings[NAME] = _G[NAME]               if addon-enabled
    for every (category, globalName) in                    AND category-enabled
-   PrettyChatDefaults                                     AND string-enabled:
+   ns.Defaults                                     AND string-enabled:
                                                               _G[NAME] = user override OR PrettyChat default
                                                           else:
                                                               _G[NAME] = self.originalStrings[NAME]
@@ -35,7 +35,7 @@ Runs once at addon load, after Blizzard's `GlobalStrings.lua` has populated `_G`
 ```lua
 function PrettyChat:OnEnable()
     self.originalStrings = {}
-    for cat, catData in pairs(PrettyChatDefaults) do
+    for cat, catData in pairs(ns.Defaults) do
         for globalName in pairs(catData.strings) do
             self.originalStrings[globalName] = _G[globalName]
         end
@@ -46,14 +46,14 @@ end
 
 This is the *only* chance to capture Blizzard's pristine values for the runtime "restore" path. Any later code that overrides `_G[GLOBALNAME]` (other addons, runtime patches) will be invisible to the snapshot.
 
-The snapshot only covers strings that exist in `PrettyChatDefaults`. Adding a new `globalName` to `Defaults.lua` requires a `/reload` for the snapshot to pick it up — there's no incremental snapshot path.
+The snapshot only covers strings that exist in `ns.Defaults`. Adding a new `globalName` to `Defaults.lua` requires a `/reload` for the snapshot to pick it up — there's no incremental snapshot path.
 
 ## Apply — `ApplyStrings()`
 
 ```lua
 function PrettyChat:ApplyStrings()
     local addonEnabled = self:IsAddonEnabled()
-    for category, catData in pairs(PrettyChatDefaults) do
+    for category, catData in pairs(ns.Defaults) do
         for globalName in pairs(catData.strings) do
             if addonEnabled
                and self:IsCategoryEnabled(category)
@@ -80,7 +80,7 @@ Idempotent — calling it multiple times leaves `_G` in the same state.
 Resolved on every `ApplyStrings` pass, in this order:
 
 1. **`General.enabled`** (addon-wide master). Stored at `db.profile.enabled` (not under `categories`). When false, **every** Blizzard original is restored regardless of per-category and per-string state — the master switch wins outright. Customizations stay in the database, just unapplied.
-2. **`<Category>.enabled`** (per-category). Stored at `db.profile.categories[Cat].enabled`. Falls back to the per-category default in `PrettyChatDefaults[Cat].enabled` (always `true` today).
+2. **`<Category>.enabled`** (per-category). Stored at `db.profile.categories[Cat].enabled`. Falls back to the per-category default in `ns.Defaults[Cat].enabled` (always `true` today).
 3. **`<Category>.<GLOBALNAME>.enabled`** (per-string). Stored at `db.profile.categories[Cat].disabledStrings[NAME]`. Inverted: `disabledStrings[NAME] = true` means **disabled**; absent / nil means enabled.
 
 A string only renders with the user's format if all three are on. For any string that resolves to "disabled" at any layer, `ApplyStrings` writes the captured original back to `_G[GLOBALNAME]` — so a panel-flip from "on" to "off" immediately restores Blizzard's behavior for that string.
@@ -95,7 +95,7 @@ function PrettyChat:GetStringValue(category, globalName)
     if catDB and catDB.strings and catDB.strings[globalName] ~= nil then
         return catDB.strings[globalName]                   -- user override
     end
-    return PrettyChatDefaults[category].strings[globalName].default   -- PrettyChat default
+    return ns.Defaults[category].strings[globalName].default   -- PrettyChat default
 end
 ```
 
@@ -109,7 +109,7 @@ Note this is the **PrettyChat default**, not the **Blizzard original**. The Bliz
 
 ## Known quirk: globals shared across categories
 
-`LOOT_ITEM_CREATED_SELF` and `LOOT_ITEM_CREATED_SELF_MULTIPLE` are registered under **both** `Loot` and `Tradeskill` in `PrettyChatDefaults` (`Defaults.lua:37` and `Defaults.lua:327`). The schema builds two rows for each — `Loot.LOOT_ITEM_CREATED_SELF.format` and `Tradeskill.LOOT_ITEM_CREATED_SELF.format` — both addressing the same `_G[LOOT_ITEM_CREATED_SELF]`. `ApplyStrings` writes both, so **whichever `pairs()` iterates last wins** — the iteration order over `PrettyChatDefaults` is non-deterministic.
+`LOOT_ITEM_CREATED_SELF` and `LOOT_ITEM_CREATED_SELF_MULTIPLE` are registered under **both** `Loot` and `Tradeskill` in `ns.Defaults` (`Defaults.lua:37` and `Defaults.lua:327`). The schema builds two rows for each — `Loot.LOOT_ITEM_CREATED_SELF.format` and `Tradeskill.LOOT_ITEM_CREATED_SELF.format` — both addressing the same `_G[LOOT_ITEM_CREATED_SELF]`. `ApplyStrings` writes both, so **whichever `pairs()` iterates last wins** — the iteration order over `ns.Defaults` is non-deterministic.
 
 In practice this means: editing the format on one of the two category sub-pages may silently lose to the other on the next `ApplyStrings`. The two defaults *do* differ — Loot uses the red `Loot` label; Tradeskill uses the magenta `Tradeskill` label — so the visible result depends on iteration order at the moment of the last write.
 

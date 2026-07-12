@@ -3,15 +3,32 @@ local addonName, ns = ...
 local PrettyChat = LibStub("AceAddon-3.0"):NewAddon("PrettyChat", "AceConsole-3.0")
 
 local Color  = ns.Const.Color
-local PREFIX = Color.cyan .. "[PC]" .. Color.reset .. " "
-local VERSION = (C_AddOns and C_AddOns.GetAddOnMetadata
-                 and C_AddOns.GetAddOnMetadata(addonName, "Version")) or "?"
+local PREFIX = ns.PREFIX
+local L      = ns.L
+local VERSION = ns.Compat.GetAddOnMetadata(addonName, "Version") or "?"
 
 local cmd  = function(s) return Color.yellow .. s .. Color.reset end
 local note = function(s) return Color.white  .. s .. Color.reset end
 
 function ns.Print(msg)
     DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. msg)
+end
+
+-- Session-only runtime flags — never persisted to SavedVariables.
+ns.State = ns.State or { debug = false }
+
+-- ns.Debug(tag, fmt, ...) — gated developer log. Returns on the first
+-- line when off so the caller pays no formatting/allocation cost in the
+-- common (disabled) case. Tier-1 addons have no debug window, so output
+-- routes through ns.Print with a grey [tag] per §12.7. Toggle with
+-- `/pc debug`.
+function ns.Debug(tag, fmt, ...)
+    if not ns.State.debug then return end
+    local msg = fmt
+    if select("#", ...) > 0 and type(fmt) == "string" then
+        msg = fmt:format(...)
+    end
+    ns.Print(Color.grey .. "[" .. tostring(tag) .. "] " .. Color.reset .. tostring(msg))
 end
 
 local defaults = {
@@ -28,7 +45,19 @@ local defaults = {
 }
 
 function PrettyChat:OnInitialize()
+    -- Merge Database's `global` defaults (schemaVersion) with the profile
+    -- defaults above so AceDB provisions both namespaces.
+    if ns.Database and ns.Database.defaults then
+        for k, v in pairs(ns.Database.defaults) do
+            defaults[k] = defaults[k] or v
+        end
+    end
+
     self.db = LibStub("AceDB-3.0"):New("PrettyChatDB", defaults, true)
+
+    if ns.Database and ns.Database.RunMigrations then
+        ns.Database.RunMigrations(self.db)
+    end
 
     self:RegisterChatCommand("pc", "OnSlashCommand")
     self:RegisterChatCommand("prettychat", "OnSlashCommand")
@@ -36,7 +65,7 @@ end
 
 function PrettyChat:OnEnable()
     self.originalStrings = {}
-    for cat, catData in pairs(PrettyChatDefaults) do
+    for _, catData in pairs(ns.Defaults) do
         for globalName in pairs(catData.strings) do
             self.originalStrings[globalName] = _G[globalName]
         end
@@ -103,7 +132,7 @@ function PrettyChat:GetStringValue(category, globalName)
     if catDB and catDB.strings and catDB.strings[globalName] ~= nil then
         return catDB.strings[globalName]
     end
-    return PrettyChatDefaults[category].strings[globalName].default
+    return ns.Defaults[category].strings[globalName].default
 end
 
 function PrettyChat:IsAddonEnabled()
@@ -117,7 +146,7 @@ function PrettyChat:IsCategoryEnabled(category)
     if catDB and catDB.enabled ~= nil then
         return catDB.enabled
     end
-    return PrettyChatDefaults[category].enabled
+    return ns.Defaults[category].enabled
 end
 
 function PrettyChat:IsStringEnabled(category, globalName)
@@ -138,15 +167,32 @@ end
 function PrettyChat:ApplyStrings()
     -- The addon-wide toggle wins: when off, every Blizzard original is
     -- restored regardless of per-category / per-string state.
+    --
+    -- Iterate CATEGORY_ORDER (fixed order) and, within each category, a
+    -- SORTED name list rather than pairs(ns.Defaults) (PC-16). A handful
+    -- of globals are registered under more than one category (e.g.
+    -- LOOT_ITEM_CREATED_SELF under Loot + Tradeskill); both write the same
+    -- _G key, so the last category to run wins. Deterministic iteration
+    -- makes that winner stable across /reload (documented last-writer:
+    -- the later entry in CATEGORY_ORDER), instead of depending on
+    -- non-deterministic hash order.
     local addonEnabled = self:IsAddonEnabled()
-    for category, catData in pairs(PrettyChatDefaults) do
-        for globalName in pairs(catData.strings) do
-            if addonEnabled
-               and self:IsCategoryEnabled(category)
-               and self:IsStringEnabled(category, globalName) then
-                _G[globalName] = self:GetStringValue(category, globalName)
-            elseif self.originalStrings and self.originalStrings[globalName] then
-                _G[globalName] = self.originalStrings[globalName]
+    for _, category in ipairs(ns.Schema.CATEGORY_ORDER) do
+        local catData = ns.Defaults[category]
+        if catData and catData.strings then
+            local names = {}
+            for globalName in pairs(catData.strings) do
+                names[#names + 1] = globalName
+            end
+            table.sort(names)
+
+            local catEnabled = addonEnabled and self:IsCategoryEnabled(category)
+            for _, globalName in ipairs(names) do
+                if catEnabled and self:IsStringEnabled(category, globalName) then
+                    _G[globalName] = self:GetStringValue(category, globalName)
+                elseif self.originalStrings and self.originalStrings[globalName] then
+                    _G[globalName] = self.originalStrings[globalName]
+                end
             end
         end
     end
@@ -277,7 +323,7 @@ function PrettyChat:Test(filter)
     local emittedAny = false
     for _, category in ipairs(ns.Schema.CATEGORY_ORDER) do
         if not filter or filter.kind ~= "category" or filter.value == category then
-            local catData = PrettyChatDefaults[category]
+            local catData = ns.Defaults[category]
             if catData and catData.strings and next(catData.strings) then
                 local sortedNames = {}
                 for globalName in pairs(catData.strings) do
@@ -357,25 +403,27 @@ local function schemaReady()
     return true
 end
 
-local printHelp, listSettings, getSetting, setSetting, runReset, runResetAll, runTest
+local printHelp, listSettings, getSetting, setSetting, runReset, runResetAll, runTest, runDebug
 
 local COMMANDS = {
-    {"help",     "List available commands",
+    {"help",     L["List available commands"],
         function(self) printHelp(self) end},
-    {"config",   "Open the settings panel",
+    {"config",   L["Open the settings panel"],
         function(self) self:OpenConfig() end},
-    {"list",     "List settings — `/pc list [<Category> | category | formatstring]`",
+    {"list",     L["List settings — `/pc list [<Category> | category | formatstring]`"],
         function(self, rest) listSettings(self, rest) end},
-    {"get",      "Print a setting's current value — `/pc get <path>`",
+    {"get",      L["Print a setting's current value — `/pc get <path>`"],
         function(self, rest) getSetting(self, rest) end},
-    {"set",      "Set a setting — `/pc set <path> <value>` (try /pc list)",
+    {"set",      L["Set a setting — `/pc set <path> <value>` (try /pc list)"],
         function(self, rest) setSetting(self, rest) end},
-    {"reset",    "Reset a category to defaults — `/pc reset <Category>`",
+    {"reset",    L["Reset a category to defaults — `/pc reset <Category>`"],
         function(self, rest) runReset(self, rest) end},
-    {"resetall", "Reset every category to addon defaults",
+    {"resetall", L["Reset every category to addon defaults"],
         function(self) runResetAll(self) end},
-    {"test",     "Print sample chat lines — `/pc test [all | category <name> | formatstring <NAME>]`",
+    {"test",     L["Print sample chat lines — `/pc test [all | category <name> | formatstring <NAME>]`"],
         function(self, rest) runTest(self, rest) end},
+    {"debug",    L["Toggle debug logging — `/pc debug [on | off | toggle]`"],
+        function(self, rest) runDebug(self, rest) end},
 }
 
 -- Published so Config.lua's parent panel can render the slash-command list
@@ -415,7 +463,7 @@ function listSettings(self, rest)
     if lowered == "formatstring" then
         local pairs_ = {}
         for _, category in ipairs(ns.Schema.CATEGORY_ORDER) do
-            local catData = PrettyChatDefaults[category]
+            local catData = ns.Defaults[category]
             if catData and catData.strings then
                 for globalName in pairs(catData.strings) do
                     pairs_[#pairs_ + 1] = { category, globalName }
@@ -537,8 +585,23 @@ function runResetAll(self)
     ns.Print(note("all settings reset to defaults"))
 end
 
+function runDebug(self, rest)
+    local arg = trim(rest):lower()
+    if arg == "on" then
+        ns.State.debug = true
+    elseif arg == "off" then
+        ns.State.debug = false
+    elseif arg == "" or arg == "toggle" then
+        ns.State.debug = not ns.State.debug
+    else
+        ns.Print("usage: " .. cmd("/pc debug [on|off|toggle]"))
+        return
+    end
+    ns.Print(note("debug logging " .. (ns.State.debug and "enabled" or "disabled")))
+end
+
 local function formatStringExists(globalName)
-    for _, catData in pairs(PrettyChatDefaults) do
+    for _, catData in pairs(ns.Defaults) do
         if catData.strings and catData.strings[globalName] then
             return true
         end

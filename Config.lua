@@ -6,15 +6,15 @@ local AceGUI = LibStub("AceGUI-3.0")
 local Const  = ns.Const
 local Color  = Const.Color
 local Schema = ns.Schema
+local L      = ns.L
 local CATEGORY_ORDER = Schema.CATEGORY_ORDER
 
 local PARENT_TITLE = "Ka0s Pretty Chat"
 
-local TOC_NOTES = (C_AddOns and C_AddOns.GetAddOnMetadata
-                   and C_AddOns.GetAddOnMetadata(addonName, "Notes")) or ""
+local TOC_NOTES = ns.Compat.GetAddOnMetadata(addonName, "Notes") or ""
 
 local LOGO_PATH = "Interface\\AddOns\\" .. addonName
-                  .. "\\media\\screenshots\\prettychat.logo.v2.tga"
+                  .. "\\media\\logos\\prettychat.logo.v2.tga"
 local LOGO_SIZE = 300
 
 -- ---------------------------------------------------------------------
@@ -200,7 +200,7 @@ local function buildHeader(panel, title, opts)
     local defaultsBtn
     if opts.defaultsButton then
         defaultsBtn = AceGUI:Create("Button")
-        defaultsBtn:SetText("Defaults")
+        defaultsBtn:SetText(L["Defaults"])
         defaultsBtn:SetWidth(Const.PANEL_DEFAULTS_W)
         defaultsBtn.frame:SetParent(panel)
         defaultsBtn.frame:ClearAllPoints()
@@ -278,7 +278,7 @@ end
 -- ---------------------------------------------------------------------
 
 StaticPopupDialogs["PRETTYCHAT_RESET_ALL"] = {
-    text         = "Reset every category and string to defaults?",
+    text         = L["Reset every category and string to defaults?"],
     button1      = YES,
     button2      = NO,
     timeout      = 0,
@@ -298,7 +298,7 @@ local function buildGeneralBody(ctx)
 
     local desc = AceGUI:Create("Label")
     desc:SetFullWidth(true)
-    desc:SetText("Addon-wide controls. The Enable toggle is the master switch — disable it and every Blizzard original is restored regardless of per-category settings.")
+    desc:SetText(L["Addon-wide controls. The Enable toggle is the master switch — disable it and every Blizzard original is restored regardless of per-category settings."])
     if desc.label and desc.label.SetFontObject and _G.GameFontHighlight then
         desc.label:SetFontObject(_G.GameFontHighlight)
     end
@@ -306,14 +306,14 @@ local function buildGeneralBody(ctx)
     addSpacer(scroll, Const.ROW_VSPACER)
 
     local enable = AceGUI:Create("CheckBox")
-    enable:SetLabel("Enable PrettyChat")
+    enable:SetLabel(L["Enable PrettyChat"])
     enable:SetFullWidth(true)
     enable:SetValue(ns.Schema.Get("General.enabled") and true or false)
     enable:SetCallback("OnValueChanged", function(_, _, value)
         ns.Schema.Set("General.enabled", value and true or false)
     end)
-    attachTooltip(enable, "Enable PrettyChat",
-        "Master switch for the addon. When off, all Blizzard originals are restored.")
+    attachTooltip(enable, L["Enable PrettyChat"],
+        L["Master switch for the addon. When off, all Blizzard originals are restored."])
     scroll:AddChild(enable)
     addSpacer(scroll, Const.ROW_VSPACER)
 
@@ -322,21 +322,21 @@ local function buildGeneralBody(ctx)
     row:SetFullWidth(true)
 
     local testBtn = AceGUI:Create("Button")
-    testBtn:SetText("Test")
-    testBtn:SetRelativeWidth(0.5)
+    testBtn:SetText(L["Test"])
+    testBtn:SetRelativeWidth(Const.BUTTON_PAIR_REL)
     testBtn:SetCallback("OnClick", function() PrettyChat:Test() end)
-    attachTooltip(testBtn, "Test",
-        "Print a sample of every active format string to chat so you can see what real loot/currency/XP messages will look like.")
+    attachTooltip(testBtn, L["Test"],
+        L["Print a sample of every active format string to chat so you can see what real loot/currency/XP messages will look like."])
     row:AddChild(testBtn)
 
     local resetAllBtn = AceGUI:Create("Button")
-    resetAllBtn:SetText("Reset all to defaults")
-    resetAllBtn:SetRelativeWidth(0.5)
+    resetAllBtn:SetText(L["Reset all to defaults"])
+    resetAllBtn:SetRelativeWidth(Const.BUTTON_PAIR_REL)
     resetAllBtn:SetCallback("OnClick", function()
         StaticPopup_Show("PRETTYCHAT_RESET_ALL")
     end)
-    attachTooltip(resetAllBtn, "Reset all to defaults",
-        "Reset every category and string to its default value.")
+    attachTooltip(resetAllBtn, L["Reset all to defaults"],
+        L["Reset every category and string to its default value."])
     row:AddChild(resetAllBtn)
 
     scroll:AddChild(row)
@@ -353,11 +353,20 @@ end
 --   GLOBALNAME (grey)     | New       [editable EditBox]
 --   [Reset]               | Preview   [disabled EditBox, color rendered]
 --
--- Two-column 40/60 split. Reset button is always visible (the click
--- is a no-op when value already equals default). The Preview EditBox
--- uses InputBoxTemplate, whose backing FontString renders WoW `|c…|r`
--- color escapes, so the rendered sample shows with its formatting
--- intact.
+-- Two-column 40/60 split. This is a deliberate deviation from the
+-- standard's §6.6 schema-driven 50/50 grid (PC-23): the per-string
+-- editor is a domain-specific three-row control (Enable/caption/Reset in
+-- the narrow left column; Original/New/Preview edit boxes in the wide
+-- right column), not a row of independent settings. The right column
+-- holds full format strings with colour escapes and needs the extra
+-- width to be legible; a 50/50 grid would truncate them. The narrow left
+-- column only ever holds a checkbox, a short GLOBALNAME caption, and a
+-- Reset button, all of which fit comfortably.
+--
+-- Reset button is always visible (the click is a no-op when value
+-- already equals default). The Preview EditBox uses InputBoxTemplate,
+-- whose backing FontString renders WoW `|c…|r` color escapes, so the
+-- rendered sample shows with its formatting intact.
 -- ---------------------------------------------------------------------
 
 local LEFT_W  = 0.4
@@ -383,14 +392,14 @@ local function buildStringRow(scroll, category, globalName, strData, refreshers)
     row1:SetFullWidth(true)
 
     local enable = AceGUI:Create("CheckBox")
-    enable:SetLabel("Enable")
+    enable:SetLabel(L["Enable"])
     enable:SetRelativeWidth(LEFT_W)
     enable:SetCallback("OnValueChanged", function(_, _, value)
         ns.Schema.Set(enabledPath, value and true or false)
     end)
 
     local enableTooltip =
-        "Use the rewritten format for this message. When unchecked, Blizzard's original is used."
+        L["Use the rewritten format for this message. When unchecked, Blizzard's original is used."]
     local sharedCats = Schema.crossRegisteredGlobals
                        and Schema.crossRegisteredGlobals[globalName]
     if sharedCats then
@@ -406,18 +415,18 @@ local function buildStringRow(scroll, category, globalName, strData, refreshers)
                 .. Color.reset
         end
     end
-    attachTooltip(enable, "Enable", enableTooltip)
+    attachTooltip(enable, L["Enable"], enableTooltip)
     row1:AddChild(enable)
 
     local origInput = AceGUI:Create("EditBox")
-    origInput:SetLabel("Original")
+    origInput:SetLabel(L["Original"])
     origInput:SetRelativeWidth(RIGHT_W)
     origInput:SetDisabled(true)
-    local origValue = (PrettyChatGlobalStrings and PrettyChatGlobalStrings[globalName])
-                     or "(original not available)"
+    local origValue = (ns.GlobalStrings and ns.GlobalStrings[globalName])
+                     or L["(original not available)"]
     origInput:SetText(origValue:gsub("|", "||"))
-    attachTooltip(origInput, "Original Format String",
-        "Blizzard's original format. Read-only.")
+    attachTooltip(origInput, L["Original Format String"],
+        L["Blizzard's original format. Read-only."])
     row1:AddChild(origInput)
     scroll:AddChild(row1)
 
@@ -432,13 +441,13 @@ local function buildStringRow(scroll, category, globalName, strData, refreshers)
     row2:AddChild(captionLbl)
 
     local newInput = AceGUI:Create("EditBox")
-    newInput:SetLabel("New")
+    newInput:SetLabel(L["New"])
     newInput:SetRelativeWidth(RIGHT_W)
     newInput:SetCallback("OnEnterPressed", function(_, _, value)
         ns.Schema.Set(formatPath, (value or ""):gsub("||", "|"))
     end)
-    attachTooltip(newInput, "New Format String",
-        "Your replacement. Type `||` for a literal `|` (color codes use this).")
+    attachTooltip(newInput, L["New Format String"],
+        L["Your replacement. Type `||` for a literal `|` (color codes use this)."])
     row2:AddChild(newInput)
     scroll:AddChild(row2)
 
@@ -448,21 +457,21 @@ local function buildStringRow(scroll, category, globalName, strData, refreshers)
     row3:SetFullWidth(true)
 
     local resetBtn = AceGUI:Create("Button")
-    resetBtn:SetText("Reset")
+    resetBtn:SetText(L["Reset"])
     resetBtn:SetRelativeWidth(LEFT_W)
     resetBtn:SetCallback("OnClick", function()
         ns.Schema.Set(formatPath, strData.default)
     end)
-    attachTooltip(resetBtn, "Reset",
-        "Restore this string to its default.")
+    attachTooltip(resetBtn, L["Reset"],
+        L["Restore this string to its default."])
     row3:AddChild(resetBtn)
 
     local previewInput = AceGUI:Create("EditBox")
-    previewInput:SetLabel("Preview")
+    previewInput:SetLabel(L["Preview"])
     previewInput:SetRelativeWidth(RIGHT_W)
     previewInput:SetDisabled(true)
-    attachTooltip(previewInput, "Preview",
-        "The current format rendered with sample arguments.")
+    attachTooltip(previewInput, L["Preview"],
+        L["The current format rendered with sample arguments."])
     row3:AddChild(previewInput)
     scroll:AddChild(row3)
 
@@ -563,7 +572,7 @@ local function buildParentBody(ctx)
     local heading = AceGUI:Create("Heading")
     heading:SetFullWidth(true)
     heading:SetHeight(Const.SECTION_HEADING_H)
-    heading:SetText("Slash Commands")
+    heading:SetText(L["Slash Commands"])
     if heading.label and heading.label.SetFontObject and _G.GameFontNormalLarge then
         heading.label:SetFontObject(_G.GameFontNormalLarge)
     end
@@ -572,7 +581,7 @@ local function buildParentBody(ctx)
 
     local alias = AceGUI:Create("Label")
     alias:SetFullWidth(true)
-    alias:SetText(Color.grey .. "/prettychat is an alias for /pc" .. Color.reset)
+    alias:SetText(Color.grey .. L["/prettychat is an alias for /pc"] .. Color.reset)
     scroll:AddChild(alias)
     addSpacer(scroll, Const.ROW_VSPACER)
 
@@ -628,7 +637,7 @@ local function registerPanels()
                 Schema.RegisterRefresher(category, buildGeneralBody(catCtx))
             end)
         else
-            local catData = PrettyChatDefaults[category]
+            local catData = ns.Defaults[category]
             if catData then
                 if catCtx.defaultsBtn then
                     catCtx.defaultsBtn:SetCallback("OnClick", function()
