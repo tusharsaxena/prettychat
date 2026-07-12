@@ -39,6 +39,7 @@ Everything is configurable through the standard Blizzard Settings panel and thro
 | `/pc reset <Category>` | Reset one category to defaults |
 | `/pc resetall` | Reset every category to defaults |
 | `/pc test` | Print a sample-rendered "Original vs Formatted" diff for every format string, grouped by category. Ignores enable toggles, so it works even when the addon is disabled. Filters: `/pc test all` (same as no-arg), `/pc test category <name>`, `/pc test formatstring <NAME>` |
+| `/pc debug` | Toggle gated debug logging on or off (`/pc debug on`, `/pc debug off`, or `/pc debug` / `/pc debug toggle`). Session-only — never saved. Off by default |
 
 ### Settings panel
 
@@ -105,6 +106,7 @@ When reporting a bug, the [smoke-test suite](./docs/smoke-tests.md) is a useful 
 
 | Version | Date | Highlights |
 |---------|------|------------|
+| 1.4.0 | 2026-07-12 | Added `/pc debug` logging toggle (session-only).<br>Added a headless test harness (`lua tests/run.lua`) plus `luacheck` config and a `.pkgmeta` packaging manifest.<br>Brought the addon to the Ka0s WoW Addon Standard v1.0.0: new Compat, Locale (localization scaffold), and Database (SavedVariables schema-version migration) modules; deterministic system-string application; load-time settings validation.<br>Interface updated to `120007`.<br>Removed the unused AceConfig-3.0 library.<br>Docs: `ARCHITECTURE.md` moved to `docs/`, `CLAUDE.md` reduced to a stub, README Testing section added. |
 | 1.3.0 | 2026-05-03 | Settings panel rebuilt on the canvas-layout framework — nine Blizzard sub-pages (one per category) plus a General page (master Enable, Test, Reset All), logo + slash-commands landing, per-string row restyle, atlas-chevron breadcrumb. Schema-driven `/pc` CLI (`help`, `list`, `get`, `set`, `reset`, `resetall`, `test`) sharing one write path with the panel; `/pc test` rendered as a per-category Original-vs-Formatted diff; `category` / `formatstring` filters on `/pc test` and `/pc list`; cyan `[PC]` chat prefix. Combat-lockdown guard moved into `OpenConfig`. MIT LICENSE; ARCHITECTURE.md and modular `docs/`; review-driven cleanup (dead exports removed, smoke-test suite added); CRLF-on-disk via `.gitattributes`. |
 | 1.2.0 | 2026-04-24 | Code modularization; bundled `GlobalStrings` database with lookup in the settings panel. |
 | 1.1.0 | 2026-02-14 | Ace3 integration; vendored `GlobalStrings.lua` reference; Blizzard format strings made configurable via the settings panel. |

@@ -2,7 +2,7 @@
 ## Title: Ka0s |cffff0000P|cffff9900r|cffffff00e|cff00ff00t|cff00fffft|cff4a86e8y |cff0000ffC|cff9900ffh|cffff00ffa|cffefefeft|r
 ## Notes: Prettier chat messages
 ## Author: aDd1kTeD2Ka0s
-## Version: 1.3.0
+## Version: 1.4.0
 ## IconTexture: 2056011
 ## SavedVariables: PrettyChatDB
 ## OptionalDeps: Ace3, LibStub, CallbackHandler-1.0

@@ -31,7 +31,7 @@ Unknown commands and the empty input fall back to `printHelp`.
 
 | Command | Effect |
 |---------|--------|
-| `/pc` / `/pc help` | Print the help index via `ns.Print`. Header line includes the addon version (`v<VERSION>`, read from TOC `## Version:` at file load via `C_AddOns.GetAddOnMetadata`). |
+| `/pc` / `/pc help` | Print the help index via `ns.Print`. Header line includes the addon version (`v<VERSION>`, read from TOC `## Version:` at file load via `ns.Compat.GetAddOnMetadata` — C_AddOns with a legacy-global fallback). |
 | `/pc config` | Open the Blizzard settings panel to the parent page and auto-expand the addon's sub-category tree so every per-category sub-page (Loot, Currency, …) is visible in the left rail without clicking the disclosure arrow. **Refuses during combat** (`InCombatLockdown()`) — Blizzard's category-switch is protected and would taint the panel. Prints a notice and stops if combat is active. |
 | `/pc list` | List every setting and its current value, grouped by category (~170 lines). With ~170 rows the output is long, but it's the only way the slash UI reaches parity with the panel (which exposes a toggle and a format edit-box per string). |
 | `/pc list <Category>` | Filter to one category. Case-insensitive (`/pc list loot` works). Prints the category toggle + every per-string `.enabled` and `.format` row. Unknown categories print the valid list. |
@@ -44,6 +44,7 @@ Unknown commands and the empty input fall back to `printHelp`.
 | `/pc test` / `/pc test all` | Print a per-category Original-vs-Formatted diff for every format string. Output ignores enable toggles (same action as the General page's Test button). See [settings-panel.md](./settings-panel.md#the-test-preview). |
 | `/pc test category <name>` | Filter the diff to one category. Case-insensitive name with the same unambiguous-prefix lookup as `/pc reset` (`Schema.ResolveCategory`). |
 | `/pc test formatstring <NAME>` | Filter the diff to a single global. Input is uppercased then validated against `ns.Defaults`. Globals registered under more than one category (e.g. `LOOT_ITEM_CREATED_SELF`) print under each — both registrations are shown. |
+| `/pc debug [on\|off\|toggle]` | Toggle the session-only debug flag `ns.State.debug` (default off, never persisted). Gates `ns.Debug(tag, fmt, …)`, which is a zero-alloc no-op when off and otherwise routes through `ns.Print` with a grey `[tag]` (Tier-1 chat fallback, §12.7). No arg toggles. |
 | unknown command | Print the help index (with an "unknown command" warning first). |
 
 Output is colored: yellow (`|cffffff00`) for command names via the local `cmd()` helper, white (`|cffffffff`) for explanatory notes via `note()`. The header line includes the version banner.

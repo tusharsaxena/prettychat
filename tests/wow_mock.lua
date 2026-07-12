@@ -17,7 +17,7 @@ local M = {}
 
 -- Metadata returned by C_AddOns.GetAddOnMetadata (tests may override).
 M.metadata = {
-    Version  = "1.3.0",
+    Version  = "1.4.0",
     Notes    = "Prettier chat messages",
     Title    = "Ka0s Pretty Chat",
     IconTexture = "2056011",
