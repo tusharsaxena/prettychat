@@ -138,7 +138,7 @@ Unstaged on `master` — nothing committed or pushed.
 
 ## 7. Manual smoke tests (run in-game)
 
-Install the working tree into `Interface/AddOns/PrettyChat`, launch WoW (Retail / Midnight `120007`), and walk these. Each names the invariant it guards. The full reference suite is [docs/smoke-tests.md](../../docs/smoke-tests.md).
+Install the working tree into `Interface/AddOns/PrettyChat`, launch WoW (Retail / Midnight `120007`), and walk these. Each names the invariant it guards. The full reference suite is [docs/smoke-tests.md](../../smoke-tests.md).
 
 ### A. Boot & load order (PC-08/11/12/14/04/05/06/07)
 1. `/reload`. **Expect:** no Lua errors on load (esp. none about `ns.Compat`, `ns.L`, `ns.Defaults`, `ns.Database`, or a `nil` global). A clean boot proves the new modules load in the right TOC order.
@@ -171,4 +171,4 @@ Install the working tree into `Interface/AddOns/PrettyChat`, launch WoW (Retail 
 ### H. Persistence & migrations (PC-07)
 15. Change a few settings, `/reload`, confirm they persist. Then inspect `PrettyChatDB` in SavedVariables → a `global.schemaVersion = 1` entry is present. **Guards:** `Database.RunMigrations` stamping.
 
-> If any test fails, map it to the invariant above and to [docs/ARCHITECTURE.md](../../docs/ARCHITECTURE.md) (Settings Schema / Taint Notes / Known Limitations), then re-run `lua tests/run.lua` to see whether the headless suite catches it.
+> If any test fails, map it to the invariant above and to [docs/ARCHITECTURE.md](../../ARCHITECTURE.md) (Settings Schema / Taint Notes / Known Limitations), then re-run `lua tests/run.lua` to see whether the headless suite catches it.

@@ -5,18 +5,19 @@ std = "lua51"
 max_line_length = false
 codes = true
 
--- Vendored libraries, the audit bundle, the headless test harness, and
--- the generated GlobalStrings data are not linted:
---   * libs/ (and Libs/ until the PC-12 rename lands) — vendored Ace3.
+-- Vendored libraries, the dated audit/review bundles, the headless test
+-- harness, and the generated GlobalStrings data are not linted:
+--   * libs/ (Libs kept too, defensively) — vendored Ace3.
 --   * GlobalStrings/ — machine-generated data + the ~1.6MB source dump.
+--   * docs/audits/, docs/reviews/ — frozen process bundles (no Lua).
 --   * tests/ — runs under stock Lua 5.1, not the WoW std set.
 exclude_files = {
     "Libs",
     "libs",
     "GlobalStrings",
-    "audit",
+    "docs/audits",
+    "docs/reviews",
     "tests",
-    "reviews",
 }
 
 -- Ace3 methods take self/event params the addon does not always use;

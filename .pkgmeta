@@ -3,10 +3,8 @@
 package-as: PrettyChat
 
 ignore:
-  - audit
   - docs
   - tests
-  - reviews
   - .luacheckrc
   - .gitignore
   - .gitattributes

@@ -9,7 +9,7 @@
 --     asked to model layout behaviour; no test drives the panel.
 --   * The DB and the _G global-string table ARE real Lua tables, so the
 --     schema / apply / render logic is genuinely exercised (per the
---     harness design in audit/2026-07-12/04_TECHNICAL_DESIGN.md §A).
+--     harness design in docs/audits/2026-07-12/04_TECHNICAL_DESIGN.md §A).
 --   * `_G` is the env itself, so `_G[GLOBALNAME] = value` writes in
 --     ApplyStrings land back in the same table the loader reads.
 
