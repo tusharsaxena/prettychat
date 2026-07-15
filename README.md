@@ -6,13 +6,11 @@
 [![Standard](https://img.shields.io/badge/Ka0s-WoW%20Addon%20Standard-yellow)](https://github.com/tusharsaxena/WowAddonStandards)
 ![Tests](https://img.shields.io/badge/Tests-36%2F36_passing-green)
 
-![alt text](https://media.forgecdn.net/attachments/1659/647/prettychat-logo-v2-jpg.jpg)
+![Ka0s Pretty Chat logo](https://media.forgecdn.net/attachments/1659/647/prettychat-logo-v2-jpg.jpg)
 
-PrettyChat is a lightweight, single-folder WoW addon that reformats system chat messages — loot, currency, money, reputation, experience, honor, tradeskill, and a handful of misc events — into a color-coded, pipe-delimited layout that's easier to scan in a busy chat window.
+PrettyChat cleans up World of Warcraft's system messages — the lines you get for loot, currency, gold, reputation, experience, honor, and crafting — and rewrites them in a tidy, color-coded layout that's easy to scan in a busy chat window.
 
-Rather than parsing chat events, PrettyChat overrides Blizzard's `GlobalStrings.lua` format strings directly. That means it works with the default Blizzard chat frame and any UI replacement (ElvUI, Glass, etc.) without configuration, and never has to inspect or rewrite messages at runtime.
-
-Everything is configurable through the standard Blizzard Settings panel and through the `/pc` slash command — every per-string toggle and editable format string in the panel is also addressable from chat by dot path.
+You can turn any message type on or off, and change its wording and colors, from the in-game settings panel or from chat with the `/pc` command.
 
 ## Screenshots
 
@@ -28,102 +26,77 @@ Everything is configurable through the standard Blizzard Settings panel and thro
 
 ### Slash commands
 
-`/pc` and `/prettychat` are aliases for the same dispatcher. All chat output from the addon is prefixed with a cyan `[PC]` tag.
+`/pc` and `/prettychat` do the same thing. Everything PrettyChat prints to chat is tagged with a cyan `[PC]`.
 
-| Command | Effect |
-|---------|--------|
-| `/pc` / `/pc help` | Show the slash-command help in chat |
-| `/pc config` | Open the settings panel (refuses during combat — Blizzard's category-switch is protected) |
-| `/pc version` | Print the addon version (`v<version>`) |
-| `/pc list` | List every setting (long; ~170 rows). Pass a category name to filter, e.g. `/pc list Loot` (case-insensitive; accepts an unambiguous prefix like `Loo`). `/pc list category` prints just the category names; `/pc list formatstring` prints every `Category.GLOBALNAME` pair |
-| `/pc get <path>` | Print one setting's current value (e.g. `/pc get Loot.LOOT_ITEM_SELF.enabled`) |
-| `/pc set <path> <value>` | Set one setting (e.g. `/pc set Loot.enabled false`). Bools accept `true/false/on/off/yes/no/1/0` |
-| `/pc reset <Category>` | Reset one category to defaults |
-| `/pc resetall` | Reset every category to defaults |
-| `/pc test` | Print a sample-rendered "Original vs Formatted" diff for every format string, grouped by category. Ignores enable toggles, so it works even when the addon is disabled. Filters: `/pc test all` (same as no-arg), `/pc test category <name>`, `/pc test formatstring <NAME>` |
-| `/pc debug` | Open the on-screen debug console (a monospace log window). Bare `/pc debug` shows/hides the window; `/pc debug on` / `/pc debug off` turn gated logging on or off. Session-only — never saved. Off by default |
+| Command | What it does |
+|---------|--------------|
+| `/pc` or `/pc help` | Show the command list in chat |
+| `/pc config` | Open the settings panel (won't open during combat) |
+| `/pc version` | Show the installed version |
+| `/pc list` | List every setting. Add a category to narrow it down, e.g. `/pc list Loot` |
+| `/pc get <setting>` | Show one setting's current value |
+| `/pc set <setting> <value>` | Change one setting, e.g. `/pc set Loot.enabled false` |
+| `/pc reset <category>` | Restore one category to PrettyChat's defaults |
+| `/pc resetall` | Restore everything to defaults |
+| `/pc test` | Preview how every message looks, before and after — works even while the addon is off |
+| `/pc debug` | Open a small on-screen log window for troubleshooting (off by default) |
 
 ### Settings panel
 
-PrettyChat appears in the Blizzard Settings panel under **Ka0s Pretty Chat**. The parent page is a read-only landing — addon logo, the one-line description, and the slash-command reference. Nine sub-pages hold the actionable controls. Each sub-page is a sibling row in the addon list, so each gets the full right-pane width to itself — no tab strip.
+PrettyChat appears in the game's Settings panel under **Ka0s Pretty Chat**. The main page is just the logo, a short description, and the command list; the controls live on nine sub-pages, each a row of its own in the settings list:
 
-*   **General** — addon-wide controls. **Enable PrettyChat** master toggle (when off, every Blizzard original is restored regardless of per-category state), a **Test** button (prints a sample of every format string to chat so you can see what each looks like), and the **Reset All to Defaults** button.
-*   **Loot** — 19 strings covering item pickups, self/group loot, bonus rolls, and currency drops via loot.
-*   **Currency** — 4 strings for currency gains and losses (including loss-from-death).
-*   **Money** — 8 strings for gold/silver/copper pickups, loot-money splits, guild bank deposits, generic gains, and quest reward money.
-*   **Reputation** — 14 strings for faction standing changes (increases, decreases, threshold transitions).
-*   **Experience** — 20 strings covering all `COMBATLOG_XPGAIN_*` variants (rested, group, raid, …).
-*   **Honor** — 6 strings for honor and combat-log honor awards.
-*   **Tradeskill** — 8 strings for crafted-item creation and lock opening (two of these — `LOOT_ITEM_CREATED_SELF` / `_MULTIPLE` — are also registered under Loot; the last category to apply wins).
-*   **Misc** — 2 catch-all strings (quest reward XP, zone exploration).
+* **General** — the master **Enable PrettyChat** switch (turn this off and every message goes back to its original wording), a **Test** button that previews every message, and **Reset All to Defaults**.
+* **Loot** — item pickups, your own and group loot, bonus rolls, and currency from loot.
+* **Currency** — currency gained and lost.
+* **Money** — gold, silver, and copper: pickups, loot splits, guild bank deposits, and quest rewards.
+* **Reputation** — faction standing going up and down.
+* **Experience** — the different ways you gain XP (rested, group, raid, and so on).
+* **Honor** — honor you earn.
+* **Tradeskill** — crafting items and opening locks.
+* **Misc** — a couple of leftovers: quest XP rewards and zone exploration.
 
-Each category sub-page lists every format string it owns. Each string is laid out as a labeled section heading (the friendly name, e.g. "Battle Pet Loot") followed by a 40/60 two-column grid: left column has an **Enable** checkbox, the GlobalString key caption (e.g. `LOOT_ITEM_SELF`), and a per-string **Reset** button; right column has labeled edit boxes for the **Original** Blizzard format (read-only), the editable **New** PrettyChat replacement, and a **Preview** that always reflects the saved value with sample arguments substituted in. Each category page also has a **Defaults** button in the page header that resets every string in that category. Disabled strings revert to Blizzard's original at runtime.
+On each page, every message has an **Enable** checkbox and its own **Reset** button. For each one you can see the original wording, type your own replacement, and watch a live **Preview** update as you edit. Turn a message off and it goes back to its original.
 
-### Behavior
+## How it works
 
-A few user-facing behaviors worth knowing. Implementation details live in [ARCHITECTURE.md](docs/ARCHITECTURE.md).
+World of Warcraft builds each system message from a fixed template. PrettyChat swaps in its own templates before the game uses them, so the change happens before the message ever reaches the chat window. That's why it works with the default chat frame and with replacements like ElvUI or Glass, with nothing to set up.
 
-- **The master toggle wins.** `General → Enable PrettyChat` (or `/pc set General.enabled false`) restores every Blizzard original regardless of per-category and per-string state. Your customizations stay in the database, just unapplied.
-- **Three enable layers**, checked in this order: master → category → per-string. A string only renders with your format if all three are on.
-- **Edit format strings from the panel.** It shows raw escape codes (`|cAARRGGBB...|r`) and, whenever your value differs from the default, renders a sample line below the edit box on commit (Enter). Editing from chat is supported but you must double `|` → `||` (WoW's chat input interprets `|c…|r` as inline color escapes the moment you press Enter).
-- **Format specifiers must match Blizzard's.** Each Blizzard string has a fixed signature (`%s`, `%d`, `%.1f`, `%2$s`, etc.). Drop or reorder a `%`-conversion and the line errors at `string.format`. Copy from the panel's left (Original) edit box and only modify the surrounding text and color escapes.
-- **Reset paths.** One string back to PrettyChat's default: click the per-string **Reset** button in the panel (only shown when your value differs from the default), or set the format to its default text via `/pc set` — the schema clears overrides that match the default automatically. Whole category: the category page's header **Defaults** button or `/pc reset <Category>`. One string back to Blizzard's original: disable its per-string toggle (or `/pc set <Category>.<GLOBALNAME>.enabled false`). Everything: General → **Reset all to defaults** (popup-confirmed) or `/pc resetall`.
+A few things worth knowing:
 
-## Testing
-
-PrettyChat ships a headless test harness that runs under stock Lua 5.1 with no WoW client — it loads the addon sources into a mock WoW environment and exercises the schema, sample renderer, apply pipeline, migration runner, slash dispatcher, and debug console.
-
-```sh
-lua tests/run.lua          # run every suite (exits non-zero on failure)
-lua tests/run.lua --list   # print the test-case inventory (runs nothing)
-luacheck .                 # static analysis (config in .luacheckrc)
-```
-
-Both `lua tests/run.lua` and `luacheck .` must be green before any commit. The suites register named `test(name, fn)` cases; the [`Tests`](https://img.shields.io/badge/Tests-36%2F36_passing-green) badge above shows the pass/total.
-
-The authoritative case count lives in the **generated** inventory [`docs/test-cases.md`](./docs/test-cases.md) — every case, grouped by suite, with per-suite and grand totals. It is produced by the runner's `--list` mode, never hand-edited:
-
-```sh
-lua tests/run.lua --list > docs/test-cases.md   # regenerate the inventory
-# verify it's in sync (CR-agnostic, since docs are CRLF on disk):
-diff --strip-trailing-cr <(lua tests/run.lua --list) docs/test-cases.md
-```
-
-**Keeping the inventory & badge in sync.** Whenever the suite changes — a case added, removed, or renamed, or the pass count moves (i.e. whenever a failing test is resolved) — regenerate `docs/test-cases.md` and update the README `tests` badge count **in the same change**, never as a follow-up.
-
-For in-game validation (panel rendering, live chat overrides, positional `%n$s` formats that stock Lua can't render), follow the manual [smoke-test suite](./docs/smoke-tests.md) — it lists which invariant each test guards.
+- **The master switch always wins.** Turning off **Enable PrettyChat** (General page, or `/pc set General.enabled false`) restores every original message, whatever your other settings say. Your customizations are kept, just not applied.
+- **Three switches, checked in order:** master, then category, then the individual message. A message only uses your wording when all three are on.
+- **Editing wording and colors.** When you write your own version of a message, keep the little `%s` and `%d` placeholders — that's where the item name, amount, and so on get filled in. Drop or reorder one and the line will look broken, so copy the original as a starting point. (Editing from chat works too, but you have to double every `|` to `||`.)
+- **Getting back to defaults.** One message: its **Reset** button, or turn it off to restore the original. A whole category: the page's **Defaults** button, or `/pc reset <category>`. Everything: **Reset All to Defaults** on the General page, or `/pc resetall`.
 
 ## FAQ
 
 | Question | Answer |
 |----------|--------|
-| Does this work with ElvUI / Glass / other chat replacements? | Yes. PrettyChat overrides Blizzard's `GlobalStrings.lua` format strings before any chat frame sees them. Any UI that consumes Blizzard's chat events gets the formatted output for free — no hooks, no per-message rewriting. |
-| Why do some lines still look like Blizzard's defaults? | Three layers may be off: the master toggle (`/pc get General.enabled`), the category (`/pc get <Category>.enabled`), or that specific string (`/pc get <Category>.<GLOBALNAME>.enabled`). Disabled strings are restored to Blizzard's original at runtime — by design. `/pc list <Category>` shows every toggle in one place. |
-| I edited a format string and now it shows raw `%s` markers or errors. | The replacement consumes wrong / missing `%`-conversions. Reset one string: disable it (`/pc set <Category>.<GLOBALNAME>.enabled false`) or copy Blizzard's exact format from the panel's left edit box. Reset a whole category: `/pc reset <Category>`. |
-| Where are settings stored? Per-character? | In `PrettyChatDB` via AceDB, on a single shared **Default** profile — every character on the account uses the same configuration. Per-character / per-class / per-realm profile scoping is not exposed in the panel today; if you want it, file an issue. |
+| Does this work with ElvUI, Glass, or other chat addons? | Yes, with nothing to configure. PrettyChat changes the game's message templates before any chat window sees them, so whatever you use to display chat gets the tidy version automatically. |
+| Why do some lines still look like the default? | Something's switched off. Check the master switch, the category, and that specific message — `/pc list <category>` shows them all in one place. A switched-off message always shows its original. |
+| I edited a message and now it looks broken. | Your version is missing or misusing the `%s` / `%d` placeholders. Copy the original wording from the panel and edit around the placeholders, or turn the message off to restore it. |
+| Where are my settings saved? | They're shared across every character on your account — one configuration for all of them. Separate per-character or per-realm settings aren't available yet; if you'd like them, open an issue. |
 
 ## Troubleshooting
 
-| Symptom | Diagnosis & fix |
-|---------|-----------------|
-| Chat looks unchanged after installing | Check in order: `/pc get General.enabled` → must be `true`; `/pc get <Category>.enabled` → must be `true`; `/pc get <Category>.<GLOBALNAME>.enabled` → must be `true`. Run `/pc test` — if test output is formatted but real chat lines aren't, another addon is overriding the same `_G[GLOBALNAME]` later in load order. |
-| An edited format string breaks the line / errors | The replacement's `%`-conversions don't match Blizzard's signature. Reset the whole category (`/pc reset <Category>`), or copy Blizzard's exact string from the panel's left (Original) edit box. |
-| Settings panel won't open from chat | `/pc config` needs the addon fully loaded — try again after the load screen completes. It also refuses during combat (Blizzard's category-switch is protected). If the parent page opens but a sub-category doesn't, click the sub-row in the addon list. |
-| Want a clean slate | One category: `/pc reset <Category>` (e.g. `/pc reset Loot`). Everything including the master toggle: `/pc resetall` (or General → **Reset All to Defaults**). |
+| Symptom | What to try |
+|---------|-------------|
+| Nothing changed after installing | Make sure it's switched on: check the master switch, the category, and the message (`/pc get General.enabled` should be `true`). Run `/pc test` — if the preview looks formatted but real chat doesn't, another addon is changing the same messages after PrettyChat. |
+| A message I edited looks broken | Your wording dropped or misused a `%s` / `%d` placeholder. Restore the category with `/pc reset <category>`, or copy the original from the panel and edit around the placeholders. |
+| The settings panel won't open | Wait until you're fully loaded in, and note it won't open during combat. If the main page opens but a sub-page doesn't, click the sub-page's row in the settings list. |
+| I want a clean slate | One category: `/pc reset <category>`. Everything: `/pc resetall`, or **Reset All to Defaults** on the General page. |
 
 ## Issues and feature requests
 
-All bugs, feature requests, and outstanding work are tracked at [https://github.com/tusharsaxena/prettychat/issues](https://github.com/tusharsaxena/prettychat/issues). Please file new reports there rather than as comments — the issue tracker is the single source of truth for the project's backlog.
-
-When reporting a bug, the [smoke-test suite](./docs/smoke-tests.md) is a useful template — it lists which invariant each test guards, so a failure can be tied back to a specific area of the addon.
+Found a bug or want a new feature? Everything is tracked on GitHub: [https://github.com/tusharsaxena/prettychat/issues](https://github.com/tusharsaxena/prettychat/issues). Please file it there rather than in a comment — that's where the project's to-do list lives.
 
 ## Version History
 
 | Version | Date | Highlights |
 |---------|------|------------|
-| 1.4.0 | 2026-07-12 | Added `/pc debug` logging toggle (session-only).<br>Added a headless test harness (`lua tests/run.lua`) plus `luacheck` config and a `.pkgmeta` packaging manifest.<br>Brought the addon to the Ka0s WoW Addon Standard v1.0.0: new Compat, Locale (localization scaffold), and Database (SavedVariables schema-version migration) modules; deterministic system-string application; load-time settings validation.<br>Interface updated to `120007`.<br>Removed the unused AceConfig-3.0 library.<br>Docs: `ARCHITECTURE.md` moved to `docs/`, `CLAUDE.md` reduced to a stub, README Testing section added. |
-| 1.3.0 | 2026-05-03 | Settings panel rebuilt on the canvas-layout framework — eight category sub-pages plus a General page (master Enable, Test, Reset All), logo + slash-commands landing, per-string row restyle, atlas-chevron breadcrumb. Schema-driven `/pc` CLI (`help`, `list`, `get`, `set`, `reset`, `resetall`, `test`) sharing one write path with the panel; `/pc test` rendered as a per-category Original-vs-Formatted diff; `category` / `formatstring` filters on `/pc test` and `/pc list`; cyan `[PC]` chat prefix. Combat-lockdown guard moved into `OpenConfig`. MIT LICENSE; ARCHITECTURE.md and modular `docs/`; review-driven cleanup (dead exports removed, smoke-test suite added); CRLF-on-disk via `.gitattributes`. |
-| 1.2.0 | 2026-04-24 | Code modularization; bundled `GlobalStrings` database with lookup in the settings panel. |
-| 1.1.0 | 2026-02-14 | Ace3 integration; vendored `GlobalStrings.lua` reference; Blizzard format strings made configurable via the settings panel. |
-| 1.0.0 | 2026-02-14 | Updated for WoW Midnight (TOC `120000`). |
+| 1.4.0 | 2026-07-12 | Added `/pc debug`, a session-only on-screen log window. Updated for the current game patch. |
+| 1.3.0 | 2026-05-03 | Rebuilt the settings panel: a page per category plus a General page (master Enable, Test, Reset All), a logo-and-commands landing page, and a cleaner layout for each message. Added the `/pc` commands (`help`, `list`, `get`, `set`, `reset`, `resetall`, `test`) so you can change any setting from chat, plus a `[PC]` tag on the addon's chat output. |
+| 1.2.0 | 2026-04-24 | Added a searchable reference of the game's message strings to the settings panel. |
+| 1.1.0 | 2026-02-14 | Made the game's message formats editable from the settings panel. |
+| 1.0.0 | 2026-02-14 | Updated for WoW Midnight. |
 | 0.0.3 | 2023-10-05 | Initial release. |
