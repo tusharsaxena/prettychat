@@ -19,6 +19,7 @@ end
 
 return function(ctx)
     local t     = ctx.t
+    local test  = ctx.test
     local inst  = ctx.loadAddon()
     local ns    = inst.ns
     local addon = inst.addon
@@ -27,28 +28,33 @@ return function(ctx)
     local PREFIX = ns.PREFIX
     local Schema = ns.Schema
 
-    -- Schema.FormatValue: bool → true/false; string → the raw format with `|` doubled.
-    local boolRow = Schema.FindByPath("General.enabled")
-    t.eq(Schema.FormatValue(boolRow, true),  "true",  "bool true formats as `true`")
-    t.eq(Schema.FormatValue(boolRow, false), "false", "bool false formats as `false`")
-    t.eq(Schema.FormatValue({ type = "string" }, "|cffff0000%s|r"),
-        "||cffff0000%s||r", "string value doubles pipes so colour escapes show as text")
+    test("Schema.FormatValue formats bools and doubles pipes in strings", function()
+        -- bool → true/false; string → the raw format with `|` doubled.
+        local boolRow = Schema.FindByPath("General.enabled")
+        t.eq(Schema.FormatValue(boolRow, true),  "true",  "bool true formats as `true`")
+        t.eq(Schema.FormatValue(boolRow, false), "false", "bool false formats as `false`")
+        t.eq(Schema.FormatValue({ type = "string" }, "|cffff0000%s|r"),
+            "||cffff0000%s||r", "string value doubles pipes so colour escapes show as text")
+    end)
 
-    -- version verb → `[PC] v<version>` (single greppable line).
-    run(ns, addon, "version")
-    t.eq(last(env), PREFIX .. "v" .. ctx.mock.metadata.Version,
-        "/pc version prints the tagged version line")
+    test("/pc version prints the tagged version line", function()
+        run(ns, addon, "version")
+        t.eq(last(env), PREFIX .. "v" .. ctx.mock.metadata.Version,
+            "/pc version prints the tagged version line")
+    end)
 
-    -- get → single-line FormatKV: gold path, ` = `, white value.
-    run(ns, addon, "get", "General.enabled")
-    t.eq(last(env),
-        PREFIX .. C.yellow .. "General.enabled" .. C.reset .. " = " .. C.white .. "true" .. C.reset,
-        "/pc get echoes the gold-key/white-value FormatKV line")
+    test("/pc get echoes the gold-key/white-value FormatKV line", function()
+        run(ns, addon, "get", "General.enabled")
+        t.eq(last(env),
+            PREFIX .. C.yellow .. "General.enabled" .. C.reset .. " = " .. C.white .. "true" .. C.reset,
+            "/pc get echoes the gold-key/white-value FormatKV line")
+    end)
 
-    -- list → green "Available settings" header + azure [category] group headers.
-    run(ns, addon, "list", "")
-    t.truthy(has(env, C.listHead .. "Available settings" .. C.reset),
-        "/pc list prints the green Available settings header")
-    t.truthy(has(env, C.azure .. "[General]" .. C.reset),
-        "/pc list prints azure [category] group headers")
+    test("/pc list prints the green header and azure category groups", function()
+        run(ns, addon, "list", "")
+        t.truthy(has(env, C.listHead .. "Available settings" .. C.reset),
+            "/pc list prints the green Available settings header")
+        t.truthy(has(env, C.azure .. "[General]" .. C.reset),
+            "/pc list prints azure [category] group headers")
+    end)
 end

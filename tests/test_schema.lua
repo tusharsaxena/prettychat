@@ -9,46 +9,54 @@ end
 
 return function(ctx)
     local t = ctx.t
+    local test = ctx.test
     local inst   = ctx.loadAddon()
     local Schema = inst.ns.Schema
     local env    = inst.env
+    local row    = firstFormatRow(Schema, "Loot")
 
-    -- Path resolution.
-    t.truthy(Schema.FindByPath("General.enabled"), "General.enabled resolves")
-    t.truthy(Schema.FindByPath("Loot.enabled"),    "Loot.enabled resolves")
-    t.falsy(Schema.FindByPath("Nope.nope"),        "unknown path is nil")
-    t.nilv(Schema.Get("Nope.nope"),               "Get on unknown path is nil")
+    test("resolves known setting paths and returns nil for unknown ones", function()
+        t.truthy(Schema.FindByPath("General.enabled"), "General.enabled resolves")
+        t.truthy(Schema.FindByPath("Loot.enabled"),    "Loot.enabled resolves")
+        t.falsy(Schema.FindByPath("Nope.nope"),        "unknown path is nil")
+        t.nilv(Schema.Get("Nope.nope"),               "Get on unknown path is nil")
+    end)
 
-    -- Category resolution (case-insensitive + prefix).
-    t.eq(Schema.ResolveCategory("loot"), "Loot", "case-insensitive category")
-    t.eq(Schema.ResolveCategory("Curr"), "Currency", "prefix category")
-    t.nilv(Schema.ResolveCategory("zzz"), "unknown category is nil")
+    test("resolves categories case-insensitively and by prefix", function()
+        t.eq(Schema.ResolveCategory("loot"), "Loot", "case-insensitive category")
+        t.eq(Schema.ResolveCategory("Curr"), "Currency", "prefix category")
+        t.nilv(Schema.ResolveCategory("zzz"), "unknown category is nil")
+    end)
 
-    -- Master toggle round-trips through the single write path.
-    Schema.Set("General.enabled", false)
-    t.eq(Schema.Get("General.enabled"), false, "master set false")
-    Schema.Set("General.enabled", true)
-    t.eq(Schema.Get("General.enabled"), true, "master set true")
+    test("master toggle round-trips through the single write path", function()
+        Schema.Set("General.enabled", false)
+        t.eq(Schema.Get("General.enabled"), false, "master set false")
+        Schema.Set("General.enabled", true)
+        t.eq(Schema.Get("General.enabled"), true, "master set true")
+    end)
 
-    -- Setting a format writes _G via ApplyStrings (single write path).
-    local row = firstFormatRow(Schema, "Loot")
-    t.truthy(row, "found a Loot format row")
-    Schema.Set(row.path, "CUSTOM %s")
-    t.eq(Schema.Get(row.path), "CUSTOM %s", "Get returns stored override")
-    t.eq(env[row.globalName], "CUSTOM %s", "ApplyStrings pushed override to _G")
+    test("Set on a format pushes the override to _G via ApplyStrings", function()
+        t.truthy(row, "found a Loot format row")
+        Schema.Set(row.path, "CUSTOM %s")
+        t.eq(Schema.Get(row.path), "CUSTOM %s", "Get returns stored override")
+        t.eq(env[row.globalName], "CUSTOM %s", "ApplyStrings pushed override to _G")
+    end)
 
-    -- Auto-clear: re-setting to the default drops the stored value.
-    Schema.Set(row.path, row.default)
-    t.eq(Schema.Get(row.path), row.default, "reset to default via Set")
-    local catDB = inst.addon.db.profile.categories[row.category]
-    t.truthy(not (catDB and catDB.strings and catDB.strings[row.globalName]),
-        "default value auto-clears the stored override")
+    test("re-setting a format to its default auto-clears the stored override", function()
+        Schema.Set(row.path, row.default)
+        t.eq(Schema.Get(row.path), row.default, "reset to default via Set")
+        local catDB = inst.addon.db.profile.categories[row.category]
+        t.truthy(not (catDB and catDB.strings and catDB.strings[row.globalName]),
+            "default value auto-clears the stored override")
+    end)
 
-    -- Set on an unknown path is a no-op returning false.
-    t.falsy(Schema.Set("Nope.nope", true), "Set unknown path returns false")
+    test("Set on an unknown path is a no-op returning false", function()
+        t.falsy(Schema.Set("Nope.nope", true), "Set unknown path returns false")
+    end)
 
-    -- Load-time path validator (PC-15) ran and every path resolved.
-    t.truthy(Schema.validation, "schema validation stashed at load")
-    t.truthy(Schema.validation.checked > 0, "validator checked rows")
-    t.eq(Schema.validation.failed, 0, "every schema path resolves to a backing default")
+    test("load-time schema path validation resolved every path", function()
+        t.truthy(Schema.validation, "schema validation stashed at load")
+        t.truthy(Schema.validation.checked > 0, "validator checked rows")
+        t.eq(Schema.validation.failed, 0, "every schema path resolves to a backing default")
+    end)
 end
