@@ -1,10 +1,10 @@
 # Ka0s Pretty Chat
 
-![wow](https://img.shields.io/badge/WoW-Midnight_12.0.7-orange)
+![WoW](https://img.shields.io/badge/WoW-Midnight_12.0.7-purple)
 ![CurseForge Version](https://img.shields.io/curseforge/v/919766)
-![tests](https://img.shields.io/badge/tests-36%2F36_passing-brightgreen)
-![license](https://img.shields.io/badge/license-MIT-green)
-[![Ka0s Standard](https://img.shields.io/badge/Ka0s_Standard-compliant-blue)](https://github.com/tusharsaxena/WowAddonStandards)
+![License](https://img.shields.io/badge/License-MIT-orange)
+[![Standard](https://img.shields.io/badge/Ka0s-WoW%20Addon%20Standard-yellow)](https://github.com/tusharsaxena/WowAddonStandards)
+![Tests](https://img.shields.io/badge/Tests-36%2F36_passing-green)
 
 ![alt text](https://media.forgecdn.net/attachments/1659/647/prettychat-logo-v2-jpg.jpg)
 
@@ -79,7 +79,7 @@ lua tests/run.lua --list   # print the test-case inventory (runs nothing)
 luacheck .                 # static analysis (config in .luacheckrc)
 ```
 
-Both `lua tests/run.lua` and `luacheck .` must be green before any commit. The suites register named `test(name, fn)` cases; the [`tests`](https://img.shields.io/badge/tests-36%2F36_passing-brightgreen) badge above shows the pass/total.
+Both `lua tests/run.lua` and `luacheck .` must be green before any commit. The suites register named `test(name, fn)` cases; the [`Tests`](https://img.shields.io/badge/Tests-36%2F36_passing-green) badge above shows the pass/total.
 
 The authoritative case count lives in the **generated** inventory [`docs/test-cases.md`](./docs/test-cases.md) — every case, grouped by suite, with per-suite and grand totals. It is produced by the runner's `--list` mode, never hand-edited:
 
