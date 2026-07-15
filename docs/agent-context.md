@@ -68,7 +68,7 @@ Topic-specific detail lives in `docs/`. Read on demand.
 
 | Topic | File |
 |-------|------|
-| Design overview + invariants (§15.3 sections) | [ARCHITECTURE.md](./ARCHITECTURE.md) |
+| Design overview + invariants (documentation-§3 sections) | [ARCHITECTURE.md](./ARCHITECTURE.md) |
 | In/out scope + resolved decisions | [scope.md](./scope.md) |
 | Per-file responsibility map | [file-index.md](./file-index.md) |
 | Module roles + public APIs | [module-map.md](./module-map.md) |
