@@ -88,4 +88,4 @@ Vendored under `libs/` (the BigWigs packager pulls nothing — no `externals`): 
 
 ## Testing
 
-Headless harness under `tests/` (stock Lua 5.1, no client): `lua tests/run.lua` + `luacheck .`. Manual in-game validation: [smoke-tests.md](./smoke-tests.md). See the README's Testing section for the gate.
+Headless harness under `tests/` (stock Lua 5.1, no client): `lua tests/run.lua` + `luacheck .`. Suites register named `test(name, fn)` cases; `lua tests/run.lua --list` prints the generated case inventory ([test-cases.md](./test-cases.md), testing-§5) — the authoritative pass count, mirrored by the README `tests` badge. Manual in-game validation: [smoke-tests.md](./smoke-tests.md). See the README's Testing section for the gate.
