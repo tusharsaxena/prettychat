@@ -20,5 +20,6 @@ Read **[docs/agent-context.md](./docs/agent-context.md)** — the full working b
 
   Never resolve the choice yourself, and never quietly conform-or-diverge without surfacing it.
 - **Test gate.** After every change, `lua tests/run.lua` must be green and `luacheck .` clean.
+- **Keep the test-case inventory & badge in sync (`testing-§5`).** When the suite changes — a case added/removed/renamed or the pass count moves (i.e. whenever a failing test is resolved) — regenerate `docs/test-cases.md` via `lua tests/run.lua --list` **and** update the README `tests` badge count **in the same change**, not as a follow-up. `docs/test-cases.md` is generated (never hand-edited) and is the authoritative pass count.
 - **Never auto-stage, auto-commit, or auto-push.** Leave edits as unstaged working-tree changes unless explicitly told otherwise (the `/wow-addon:commit` skill is the exception — it runs its own confirmation gate).
 - **Never bump the version** (`## Version:` in `PrettyChat.toc`, README badges/changelog) without an explicit instruction.
