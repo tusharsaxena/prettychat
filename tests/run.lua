@@ -50,6 +50,8 @@ local SUITES = {
     "test_render",
     "test_apply",
     "test_database",
+    "test_debuglog",
+    "test_slash",
 }
 
 for _, name in ipairs(SUITES) do

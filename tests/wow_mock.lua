@@ -68,6 +68,10 @@ function M.newEnv()
 
     env.CreateFrame      = function() return newFrame() end
     env.InCombatLockdown = function() return false end
+    -- Globals the on-screen debug console (core/DebugLog.lua) touches.
+    env.date             = os.date
+    env.wipe             = function(t) for k in pairs(t) do t[k] = nil end return t end
+    env.UISpecialFrames  = {}
     env.C_Timer          = { After = function(_, fn) if fn then fn() end end }
     env.C_AddOns         = {
         GetAddOnMetadata = function(_, key) return M.metadata[key] end,

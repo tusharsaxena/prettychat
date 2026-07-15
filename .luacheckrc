@@ -31,6 +31,8 @@ ignore = { "212/self", "212/event", "211/addonName" }
 globals = {
     "PrettyChatDB",
     "StaticPopupDialogs",
+    -- The debug console appends its window names to this Blizzard table.
+    "UISpecialFrames",
 }
 
 -- Blizzard / WoW API surface the addon reads.
@@ -39,6 +41,8 @@ read_globals = {
     "C_AddOns",
     "C_Timer",
     "CreateFrame",
+    "date",
+    "wipe",
     "Settings",
     "SettingsPanel",
     "StaticPopup_Show",

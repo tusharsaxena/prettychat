@@ -51,10 +51,15 @@ Const.Color = {
     gold   = "|cffffd700",
     grey   = "|cffaaaaaa",
     red    = "|cffff5050",
-    yellow = "|cffffff00",
-    white  = "|cffffffff",
+    yellow = "|cffffff00",   -- also the slash-§5 schema-path/key colour (ffff00)
+    white  = "|cffffffff",   -- also the slash-§5 value colour (ffffff)
     cyan   = "|cff00ffff",
-    green  = "|cff40ff40",
+    green  = "|cff40ff40",   -- brand green (Test labels + existing UI)
+    -- slash-commands-§5 mandated schema-output palette. These exact codes are a MUST —
+    -- they read identically across every Ka0s addon, so MUST NOT be substituted. Note the
+    -- header green (33ff99) is deliberately distinct from the brand green above (40ff40).
+    listHead = "|cff33ff99",  -- `list` "Available settings" header
+    azure    = "|cff3399ff",  -- `list` [category] group headers
     reset  = "|r",
 }
 
@@ -62,3 +67,10 @@ Const.Color = {
 -- output — ns.Print prepends it. Cyan is the addon's brand mark.
 Const.PREFIX = Const.Color.cyan .. "[PC]" .. Const.Color.reset .. " "
 ns.PREFIX    = Const.PREFIX
+
+-- Monospace font for the on-screen debug console (debug-logging-§2). Vendored under
+-- media/fonts/ (JetBrains Mono, OFL) rather than depending on a user-installed font, and
+-- applied via this direct path in core/DebugLog.lua. LibSharedMedia registration is
+-- intentionally omitted: PrettyChat ships no font-picker consumer, so the path constant
+-- alone suffices — a documented SHOULD-deviation from debug-logging-§2.
+Const.FONT_MONO = "Interface\\AddOns\\PrettyChat\\media\\fonts\\JetBrainsMono-Regular.ttf"

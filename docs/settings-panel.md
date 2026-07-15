@@ -1,12 +1,12 @@
 # Settings panel
 
-`Config.lua` builds the settings panel directly on Blizzard's modern `Settings.RegisterCanvasLayoutCategory` / `Settings.RegisterCanvasLayoutSubcategory` API and renders body content with AceGUI. PrettyChat appears under **Ka0s Pretty Chat**; the parent page hosts the logo, tagline, and slash-command list (read-only orientation), and nine sub-pages hold the actionable controls — one per category (`General`, Loot, Currency, Money, Reputation, Experience, Honor, Tradeskill, Misc).
+`settings/Panel.lua` builds the settings panel directly on Blizzard's modern `Settings.RegisterCanvasLayoutCategory` / `Settings.RegisterCanvasLayoutSubcategory` API and renders body content with AceGUI. PrettyChat appears under **Ka0s Pretty Chat**; the parent page hosts the logo, tagline, and slash-command list (read-only orientation), and nine sub-pages hold the actionable controls — one per category (`General`, Loot, Currency, Money, Reputation, Experience, Honor, Tradeskill, Misc).
 
 This doc covers: the canvas-layout framework, the unified per-page header, the virtual `General` sub-page, the per-string row, the Test button, and the color palette.
 
 ## Canvas-layout framework
 
-`Config.lua` doesn't go through `AceConfigDialog:AddToBlizOptions` (the older path that auto-renders an AceConfig options table inside the addon's right pane). It builds plain Blizzard `Frame`s for each page, stamps a unified header on each, and uses an AceGUI `ScrollFrame` for the body content. Every category (parent + sub-pages) shares the same header design and right-edge gutter, and the body is laid out the same way on every page.
+`settings/Panel.lua` doesn't go through `AceConfigDialog:AddToBlizOptions` (the older path that auto-renders an AceConfig options table inside the addon's right pane). It builds plain Blizzard `Frame`s for each page, stamps a unified header on each, and uses an AceGUI `ScrollFrame` for the body content. Every category (parent + sub-pages) shares the same header design and right-edge gutter, and the body is laid out the same way on every page.
 
 Registration order from `registerPanels()`:
 
@@ -21,7 +21,7 @@ end
 
 `PrettyChat.optionsCategoryID = mainCategory:GetID()` is what `PrettyChat:OpenConfig()` passes to `Settings.OpenToCategory`. `PrettyChat.optionsCategory` (the category object itself) is what `expandMainCategory` walks for the left-tree disclosure toggle.
 
-`Config.lua` exposes `ns.Config.RegisterPanels`; `PrettyChat:OnEnable` calls it after the snapshot/`ApplyStrings` pair. AceGUI body rendering is **deferred until the panel's first `OnShow`** — at registration time the body's frame width is zero, and AceGUI's `List` layout sizes children against the container's current width, so building too early produces a stack of misaligned widgets.
+`settings/Panel.lua` exposes `ns.Config.RegisterPanels`; `PrettyChat:OnEnable` calls it after the snapshot/`ApplyStrings` pair. AceGUI body rendering is **deferred until the panel's first `OnShow`** — at registration time the body's frame width is zero, and AceGUI's `List` layout sizes children against the container's current width, so building too early produces a stack of misaligned widgets.
 
 ## Unified per-page header
 
@@ -35,7 +35,7 @@ end
 
 The parent page renders its title plain (`"Ka0s Pretty Chat"`) via `opts.isMain = true`. Sub-pages prefix the title to read as a breadcrumb: `"Ka0s Pretty Chat ▸ Loot"`. The chevron is an inline-atlas escape (` |A:common-icon-forwardarrow:16:16|a `) so it renders as a real texture, not a font glyph — font-agnostic and locale-safe. If a future client retires the atlas, swap to `NPE_RightClick` or `chevron-collapse` (same escape syntax, just the atlas name changes). The Blizzard left-tree label always stays unprefixed (driven by `panel.name`) so the indented tree doesn't repeat the parent name.
 
-All layout dimensions live in `Constants.lua` (`ns.Const.PANEL_PADDING_X`, `PANEL_HEADER_TOP`, `PANEL_HEADER_HEIGHT`, `PANEL_DEFAULTS_W`, `SECTION_TOP_SPACER`, `SECTION_BOTTOM_SPACER`, `SECTION_HEADING_H`, `ROW_VSPACER`, `STRING_VSPACER`).
+All layout dimensions live in `core/Constants.lua` (`ns.Const.PANEL_PADDING_X`, `PANEL_HEADER_TOP`, `PANEL_HEADER_HEIGHT`, `PANEL_DEFAULTS_W`, `SECTION_TOP_SPACER`, `SECTION_BOTTOM_SPACER`, `SECTION_HEADING_H`, `ROW_VSPACER`, `STRING_VSPACER`).
 
 ## Always-visible scrollbar
 
@@ -110,10 +110,10 @@ ns.Schema.Set(formatPath, value:gsub("||", "|"))          -- on commit
 
 ## NotifyPanelChange refresh dispatch
 
-`Schema.NotifyPanelChange(category)` invokes a per-sub-page refresh closure that `Config.lua` registers on first `OnShow`:
+`Schema.NotifyPanelChange(category)` invokes a per-sub-page refresh closure that `settings/Panel.lua` registers on first `OnShow`:
 
 ```lua
--- Schema.lua
+-- settings/Schema.lua
 Schema.refreshers = {}
 
 function Schema.RegisterRefresher(category, fn)
@@ -130,7 +130,7 @@ function Schema.NotifyPanelChange(category)
 end
 ```
 
-`Config.lua`'s sub-page builder returns a `refresh` closure; the panel's `OnShow` calls `Schema.RegisterRefresher(category, refresh)`. A `Schema.Set` from the panel widgets (callback) or the `/pc set` slash both end up calling `Schema.NotifyPanelChange(row.category)` — the registered closure walks every per-string `refresh` in that category and re-syncs widget values + disabled state from the DB.
+`settings/Panel.lua`'s sub-page builder returns a `refresh` closure; the panel's `OnShow` calls `Schema.RegisterRefresher(category, refresh)`. A `Schema.Set` from the panel widgets (callback) or the `/pc set` slash both end up calling `Schema.NotifyPanelChange(row.category)` — the registered closure walks every per-string `refresh` in that category and re-syncs widget values + disabled state from the DB.
 
 Master-toggle (`General.enabled`) changes cascade to every sub-page because per-string disabled state depends on the master.
 
@@ -140,7 +140,7 @@ Programmatic `:SetValue`/`:SetText` on AceGUI widgets do **not** re-fire the use
 
 ## The Test preview
 
-Both the General sub-page's "Test" button and the `/pc test` slash command call `PrettyChat:Test(filter)` (in `PrettyChat.lua`). The button calls it with no filter (every category, every string); the slash dispatcher (`runTest`) forwards `{kind="category", value=…}` or `{kind="formatstring", value=…}` for the subcommand variants. See [slash-commands.md](./slash-commands.md#command-reference) for the user-facing forms.
+Both the General sub-page's "Test" button and the `/pc test` slash command call `PrettyChat:Test(filter)` (in `modules/Override.lua`). The button calls it with no filter (every category, every string); the slash dispatcher (`runTest`) forwards `{kind="category", value=…}` or `{kind="formatstring", value=…}` for the subcommand variants. See [slash-commands.md](./slash-commands.md#command-reference) for the user-facing forms.
 
 The function:
 
@@ -151,11 +151,11 @@ The function:
 
 Test output ignores the master / per-category / per-string enable toggles — the preview is for *seeing what your formats look like*, not for verifying which ones are currently applied to live chat. The toggles only affect what `ApplyStrings` writes to live `_G[GLOBALNAME]`.
 
-`ns.RenderSample(fmt)` (also exposed from `PrettyChat.lua`) is the single-string version used by the per-row sample label: returns `(rendered_string)` on success or `(nil, err)` on `string.format` failure.
+`ns.RenderSample(fmt)` (also exposed from `modules/Override.lua`) is the single-string version used by the per-row sample label: returns `(rendered_string)` on success or `(nil, err)` on `string.format` failure.
 
 ## Color palette
 
-The default formats in `Defaults.lua` use this palette. Edit `Defaults.lua` directly if you want to add a category or shift a hue.
+The default formats in `defaults/Defaults.lua` use this palette. Edit `defaults/Defaults.lua` directly if you want to add a category or shift a hue.
 
 | Color (`ff…`) | Usage |
 |--------------|-------|
@@ -177,4 +177,4 @@ The default formats in `Defaults.lua` use this palette. Edit `Defaults.lua` dire
 
 WoW color escapes use `|cAARRGGBB...|r` (AA = alpha, always `ff`). The house style for new defaults is `Category | Context | Source | +/- value`, each segment color-coded.
 
-Addon UI escapes (slash output, `[PC]` prefix, panel grey captions, command-list colors, `/pc test` block markers) are centralized in `ns.Const.Color` (`Constants.lua`) — `cyan`/`reset` build the `[PC]` prefix, `yellow`/`white` colour the slash-help command names + descriptions, `grey` colours the alias note and the per-string GLOBALNAME caption, `gold` is used for the `Category:` header in `/pc test` output, `green` is used for the `Name:` / `Original:` / `Formatted:` labels in the same. Edit `Constants.lua` to retune the addon UI palette; this table above governs the chat-message palette.
+Addon UI escapes (slash output, `[PC]` prefix, panel grey captions, command-list colors, `/pc test` block markers) are centralized in `ns.Const.Color` (`core/Constants.lua`) — `cyan`/`reset` build the `[PC]` prefix, `yellow`/`white` colour the slash-help command names + descriptions (and the gold-key / white-value `/pc list` / `get` / `set` rows), `grey` colours the alias note and the per-string GLOBALNAME caption, `gold` is used for the `Category:` header in `/pc test` output, `green` is used for the `Name:` / `Original:` / `Formatted:` labels in the same. The mandated slash-commands-§5 output palette adds `listHead` (green "Available settings" / count headers) and `azure` (the `[Category]` group headers) — these exact codes are fixed across every Ka0s addon and must not be substituted. Edit `core/Constants.lua` to retune the addon UI palette; this table above governs the chat-message palette.

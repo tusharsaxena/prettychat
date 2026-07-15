@@ -4,7 +4,7 @@ What's in scope, what's out, and the resolved decisions that shaped the contract
 
 ## In scope
 
-- **GlobalString overrides** for system chat lines — loot, currency, money, reputation, experience, honor, tradeskill, and a small Misc bucket. Format strings come from `Defaults.lua`; per-string user overrides live in SavedVariables.
+- **GlobalString overrides** for system chat lines — loot, currency, money, reputation, experience, honor, tradeskill, and a small Misc bucket. Format strings come from `defaults/Defaults.lua`; per-string user overrides live in SavedVariables.
 - **Three enable layers** — addon-wide master toggle → per-category toggle → per-string toggle. Disabled strings revert to the captured Blizzard original at runtime.
 - **Settings panel** integrated into Blizzard's AddOns settings via canvas-layout subcategories, one sub-page per category (no right-pane tabs), with a virtual `General` sub-page for the master switch / Test / Reset all controls.
 - **Schema-driven slash CLI** (`/pc list / get / set / reset / resetall / test`) sharing one write path with the panel. Every panel-shaped operation is reachable from chat by dot path.
@@ -35,7 +35,7 @@ Decisions made during requirements review and v1.x.x — these are settled, not 
 - **Auto-clear on default match.** For `string_format` rows, writing the value back to the PrettyChat default clears the override entry instead of storing a duplicate. `db.profile.categories[Cat].strings` never collects "override that happens to equal the default".
 - **Format-specifier signatures must match Blizzard's.** Each Blizzard string has a fixed signature (`%s`, `%d`, `%.1f`, `%2$s`, …); replacements must consume the same conversions in the same order or `string.format` errors at runtime. The panel's left edit box always shows Blizzard's exact original — copy from there.
 - **`/pc config` refuses during combat.** Blizzard's category-switch is protected; opening it under combat lockdown taints the panel.
-- **Cyan `[PC]` chat prefix on all addon output.** Every chat line goes through `ns.Print(msg)` in `PrettyChat.lua`, which prepends `|cff00ffff[PC]|r `. `Test()` is the only path that writes directly to `DEFAULT_CHAT_FRAME:AddMessage` — necessary for its structured per-category Original/Formatted block — but every body line is still prefixed so the report can't be confused with real chat lines.
+- **Cyan `[PC]` chat prefix on all addon output.** Every chat line goes through `ns.Print(msg)` in `core/PrettyChat.lua`, which prepends `|cff00ffff[PC]|r `. `Test()` is the only path that writes directly to `DEFAULT_CHAT_FRAME:AddMessage` — necessary for its structured per-category Original/Formatted block — but every body line is still prefixed so the report can't be confused with real chat lines.
 
 ## Where the contract lives
 

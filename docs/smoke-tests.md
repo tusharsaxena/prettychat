@@ -2,7 +2,7 @@
 
 There are no automated tests for PrettyChat — the addon's behavior depends on WoW client state (`_G[GLOBALNAME]`, AceDB profile, the live chat frame, the Settings panel) that can't be exercised outside the game. Validation is manual, in-game, against this checklist.
 
-Run the **quick recipe** for routine work. Run the **full suite** before tagging a release, after touching `OnEnable` / `ApplyStrings` / `Schema.lua`, or after a WoW client patch.
+Run the **quick recipe** for routine work. Run the **full suite** before tagging a release, after touching `OnEnable` / `ApplyStrings` / `settings/Schema.lua`, or after a WoW client patch.
 
 If you can only reason about a change from code and cannot test it in WoW, say so explicitly — don't claim it works.
 
@@ -44,7 +44,7 @@ Tests are grouped by subsystem. Each test has an ID (`T-NN`), a one-line **Why**
 > Why: `/pc` and `/prettychat` both dispatch through `OnSlashCommand`.
 
 - Steps: `/pc help` and `/prettychat help`.
-- Expected: identical output from both. Header shows `v<VERSION>` matching the TOC. All eight commands listed (`help`, `config`, `list`, `get`, `set`, `reset`, `resetall`, `test`).
+- Expected: identical output from both. Header shows `v<VERSION>` matching the TOC. All ten commands listed (`help`, `config`, `version`, `list`, `get`, `set`, `reset`, `resetall`, `test`, `debug`).
 
 ### O — Override pipeline (the three enable layers)
 
@@ -111,7 +111,7 @@ Tests are grouped by subsystem. Each test has an ID (`T-NN`), a one-line **Why**
 
 - Steps: open each sub-page in turn.
 - Expected: page header reads `Ka0s Pretty Chat ▸ Loot`, `Ka0s Pretty Chat ▸ Currency`, etc., with the separator visibly rendered as a small gold right-arrow texture (not as a literal `▸` character or pipe). Atlas divider underneath in the same gold as the title.
-- Failure mode: separator appears as raw escape text `|A:common-icon-forwardarrow:16:16|a`, or as a missing-texture box. Cause: the atlas was retired in a client patch. Swap the atlas name in `Config.lua`'s `sep` local to `NPE_RightClick` or `chevron-collapse`.
+- Failure mode: separator appears as raw escape text `|A:common-icon-forwardarrow:16:16|a`, or as a missing-texture box. Cause: the atlas was retired in a client patch. Swap the atlas name in `settings/Panel.lua`'s `sep` local to `NPE_RightClick` or `chevron-collapse`.
 
 #### T-23 — Per-string block layout
 
@@ -327,10 +327,10 @@ Tests are grouped by subsystem. Each test has an ID (`T-NN`), a one-line **Why**
 
 #### T-53 — Cross-category shared global (`LOOT_ITEM_CREATED_SELF`)
 
-> Why: this key is registered under both `Loot` and `Tradeskill`. Iteration order in `ApplyStrings` is non-deterministic — last writer wins.
+> Why: this key is registered under both `Loot` and `Tradeskill`. `ApplyStrings` iterates `CATEGORY_ORDER` in fixed order (sorted names within each), so the last category wins **deterministically** (PC-16) — `Tradeskill` comes after `Loot`, so the Tradeskill format wins.
 
 - Setup: edit `Loot.LOOT_ITEM_CREATED_SELF.format` and `Tradeskill.LOOT_ITEM_CREATED_SELF.format` to visibly different strings. `/reload` a few times and trigger creation events.
-- Expected: live chat shows whichever category's iteration won that load. Documented behavior — see [override-pipeline.md](./override-pipeline.md#known-quirk-globals-shared-across-categories). Do not "fix" without a triggering complaint.
+- Expected: live chat shows the **Tradeskill** format on *every* load (stable across reloads, not a coin-flip). Documented behavior — see [override-pipeline.md](./override-pipeline.md#known-quirk-globals-shared-across-categories). Do not "fix" without a triggering complaint.
 
 #### T-54 — Disabled state propagates to UI inputs
 
@@ -351,9 +351,9 @@ Tests are grouped by subsystem. Each test has an ID (`T-NN`), a one-line **Why**
 | Trigger | Run |
 |---------|-----|
 | Routine code change | Quick recipe |
-| Touched `OnEnable` / `ApplyStrings` / `Schema.lua` | Quick recipe + B + O groups |
-| Touched `Config.lua` | Quick recipe + S + X groups |
-| Touched slash command surface in `PrettyChat.lua` | Quick recipe + L + X groups |
+| Touched `OnEnable` / `ApplyStrings` / `settings/Schema.lua` | Quick recipe + B + O groups |
+| Touched `settings/Panel.lua` | Quick recipe + S + X groups |
+| Touched slash command surface in `settings/Slash.lua` | Quick recipe + L + X groups |
 | Pre-release / pre-tag | Full suite |
 | Post WoW client patch | Full suite + regenerate `GlobalStrings/` per [global-strings.md](./global-strings.md#regenerating-chunks-after-a-wow-patch) |
 

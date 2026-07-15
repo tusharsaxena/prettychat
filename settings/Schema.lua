@@ -204,6 +204,24 @@ function Schema.Get(path)
     return row.get()
 end
 
+-- Single, type-aware, schema-driven value formatter (Ka0s standard, slash-commands-§5).
+-- Shared by `/pc list` rows and the `/pc get` / `/pc set` echo so the two surfaces can
+-- never diverge. PrettyChat has two row types: bool → `true`/`false`; string → the raw
+-- format string with `|` doubled to `||` so its embedded colour escapes render as literal
+-- text (the same `||`-for-literal-pipe convention `/pc set` accepts as input) instead of
+-- colouring the chat line.
+function Schema.FormatValue(row, v)
+    if v == nil then return "nil" end
+    local vtype = row and row.type or type(v)
+    if vtype == "bool" or type(v) == "boolean" then
+        return tostring(v)
+    end
+    if type(v) == "string" then
+        return (v:gsub("|", "||"))
+    end
+    return tostring(v)
+end
+
 -- Refresher dispatch. Config.lua registers a closure per sub-page on
 -- first OnShow via Schema.RegisterRefresher; NotifyPanelChange invokes
 -- the matching closure (or every closure when the master toggle moves —
@@ -236,6 +254,7 @@ function Schema.Set(path, value)
     row.set(value)
     PrettyChat:ApplyStrings()
     Schema.NotifyPanelChange(row.category)
+    ns.Debug("Set", "%s = %s", path, tostring(value))
     return true
 end
 

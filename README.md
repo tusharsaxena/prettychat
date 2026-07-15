@@ -33,13 +33,14 @@ Everything is configurable through the standard Blizzard Settings panel and thro
 |---------|--------|
 | `/pc` / `/pc help` | Show the slash-command help in chat |
 | `/pc config` | Open the settings panel (refuses during combat — Blizzard's category-switch is protected) |
+| `/pc version` | Print the addon version (`v<version>`) |
 | `/pc list` | List every setting (long; ~170 rows). Pass a category name to filter, e.g. `/pc list Loot` (case-insensitive; accepts an unambiguous prefix like `Loo`). `/pc list category` prints just the category names; `/pc list formatstring` prints every `Category.GLOBALNAME` pair |
 | `/pc get <path>` | Print one setting's current value (e.g. `/pc get Loot.LOOT_ITEM_SELF.enabled`) |
 | `/pc set <path> <value>` | Set one setting (e.g. `/pc set Loot.enabled false`). Bools accept `true/false/on/off/yes/no/1/0` |
 | `/pc reset <Category>` | Reset one category to defaults |
 | `/pc resetall` | Reset every category to defaults |
 | `/pc test` | Print a sample-rendered "Original vs Formatted" diff for every format string, grouped by category. Ignores enable toggles, so it works even when the addon is disabled. Filters: `/pc test all` (same as no-arg), `/pc test category <name>`, `/pc test formatstring <NAME>` |
-| `/pc debug` | Toggle gated debug logging on or off (`/pc debug on`, `/pc debug off`, or `/pc debug` / `/pc debug toggle`). Session-only — never saved. Off by default |
+| `/pc debug` | Open the on-screen debug console (a monospace log window). Bare `/pc debug` shows/hides the window; `/pc debug on` / `/pc debug off` turn gated logging on or off. Session-only — never saved. Off by default |
 
 ### Settings panel
 
@@ -69,7 +70,7 @@ A few user-facing behaviors worth knowing. Implementation details live in [ARCHI
 
 ## Testing
 
-PrettyChat ships a headless test harness that runs under stock Lua 5.1 with no WoW client — it loads the addon sources into a mock WoW environment and exercises the schema, sample renderer, apply pipeline, and migration runner.
+PrettyChat ships a headless test harness that runs under stock Lua 5.1 with no WoW client — it loads the addon sources into a mock WoW environment and exercises the schema, sample renderer, apply pipeline, migration runner, slash dispatcher, and debug console.
 
 ```sh
 lua tests/run.lua   # unit/characterization suites (exits non-zero on failure)

@@ -1,6 +1,6 @@
 # Override pipeline
 
-How Blizzard's chat lines become PrettyChat's reformatted output. The whole pipeline lives in `PrettyChat.lua` and runs at `OnEnable` plus on every settings change.
+How Blizzard's chat lines become PrettyChat's reformatted output. The engine lives in `modules/Override.lua` (`ApplyStrings`, the enable predicates, `ResetCategory` / `ResetAll`); the pristine-values snapshot is taken in `core/PrettyChat.lua`'s `OnEnable`. It runs at `OnEnable` plus on every settings change.
 
 ## Three steps
 
@@ -46,21 +46,30 @@ end
 
 This is the *only* chance to capture Blizzard's pristine values for the runtime "restore" path. Any later code that overrides `_G[GLOBALNAME]` (other addons, runtime patches) will be invisible to the snapshot.
 
-The snapshot only covers strings that exist in `ns.Defaults`. Adding a new `globalName` to `Defaults.lua` requires a `/reload` for the snapshot to pick it up — there's no incremental snapshot path.
+The snapshot only covers strings that exist in `ns.Defaults`. Adding a new `globalName` to `defaults/Defaults.lua` requires a `/reload` for the snapshot to pick it up — there's no incremental snapshot path.
 
 ## Apply — `ApplyStrings()`
 
 ```lua
 function PrettyChat:ApplyStrings()
     local addonEnabled = self:IsAddonEnabled()
-    for category, catData in pairs(ns.Defaults) do
-        for globalName in pairs(catData.strings) do
-            if addonEnabled
-               and self:IsCategoryEnabled(category)
-               and self:IsStringEnabled(category, globalName) then
-                _G[globalName] = self:GetStringValue(category, globalName)
-            elseif self.originalStrings and self.originalStrings[globalName] then
-                _G[globalName] = self.originalStrings[globalName]
+    -- Deterministic iteration (PC-16): fixed CATEGORY_ORDER, sorted names within each
+    -- category, so a global registered under two categories resolves the same way every
+    -- reload. (Elided here: applied/restored counters + the ns.Debug("Apply", …) line.)
+    for _, category in ipairs(ns.Schema.CATEGORY_ORDER) do
+        local catData = ns.Defaults[category]
+        if catData and catData.strings then
+            local names = {}
+            for globalName in pairs(catData.strings) do names[#names + 1] = globalName end
+            table.sort(names)
+            for _, globalName in ipairs(names) do
+                if addonEnabled
+                   and self:IsCategoryEnabled(category)
+                   and self:IsStringEnabled(category, globalName) then
+                    _G[globalName] = self:GetStringValue(category, globalName)
+                elseif self.originalStrings and self.originalStrings[globalName] then
+                    _G[globalName] = self.originalStrings[globalName]
+                end
             end
         end
     end
@@ -72,6 +81,8 @@ Runs from:
 - `OnEnable` — initial pass after the snapshot.
 - `Schema.Set` (every settings mutation) — `Schema.Set` calls `ApplyStrings` directly after the row's `set()` writes the DB. Row `set()` closures themselves are pure DB writes; they do not trigger `ApplyStrings` so a future `Schema.SetMany` / preset-load can apply once per batch.
 - `PrettyChat:ResetCategory(cat)` and `PrettyChat:ResetAll()` — both bypass `Schema.Set` (they zero out whole sub-tables, not write through a single row), so they call `ApplyStrings` and `Schema.NotifyPanelChange` themselves.
+
+When `/pc debug on` is active, each `ApplyStrings` pass emits an `[Apply] addon=… applied=N restored=N` line to the on-screen debug console, and each `Schema.Set` emits a `[Set] <path> = <value>` line — the two `ns.Debug` producers in the addon today. (Loot lines themselves never log: the addon hooks no events; it only swaps `_G[GLOBALNAME]`.)
 
 Idempotent — calling it multiple times leaves `_G` in the same state.
 
@@ -109,8 +120,8 @@ Note this is the **PrettyChat default**, not the **Blizzard original**. The Bliz
 
 ## Known quirk: globals shared across categories
 
-`LOOT_ITEM_CREATED_SELF` and `LOOT_ITEM_CREATED_SELF_MULTIPLE` are registered under **both** `Loot` and `Tradeskill` in `ns.Defaults` (`Defaults.lua:37` and `Defaults.lua:327`). The schema builds two rows for each — `Loot.LOOT_ITEM_CREATED_SELF.format` and `Tradeskill.LOOT_ITEM_CREATED_SELF.format` — both addressing the same `_G[LOOT_ITEM_CREATED_SELF]`. `ApplyStrings` writes both, so **whichever `pairs()` iterates last wins** — the iteration order over `ns.Defaults` is non-deterministic.
+`LOOT_ITEM_CREATED_SELF` and `LOOT_ITEM_CREATED_SELF_MULTIPLE` are registered under **both** `Loot` and `Tradeskill` in `ns.Defaults` (`defaults/Defaults.lua:39` and `defaults/Defaults.lua:329`). The schema builds two rows for each — `Loot.LOOT_ITEM_CREATED_SELF.format` and `Tradeskill.LOOT_ITEM_CREATED_SELF.format` — both addressing the same `_G[LOOT_ITEM_CREATED_SELF]`. `ApplyStrings` writes both, so **the category that iterates last wins**. Because `ApplyStrings` walks `ns.Schema.CATEGORY_ORDER` in fixed order (and a sorted name list within each category), that winner is **deterministic** (PC-16): `Tradeskill` comes after `Loot` in `CATEGORY_ORDER`, so the Tradeskill row wins on every `/reload` — not a coin-flip. `Schema.crossRegisteredGlobals` records the conflict and the per-string enable-checkbox tooltip surfaces it in-page.
 
-In practice this means: editing the format on one of the two category sub-pages may silently lose to the other on the next `ApplyStrings`. The two defaults *do* differ — Loot uses the red `Loot` label; Tradeskill uses the magenta `Tradeskill` label — so the visible result depends on iteration order at the moment of the last write.
+In practice this means: editing the format on the **Loot** sub-page for one of these two globals is silently overwritten by the **Tradeskill** value on the next `ApplyStrings`. The two defaults *do* differ — Loot uses the red `Loot` label; Tradeskill uses the magenta `Tradeskill` label — so the visible result is the Tradeskill one, stably across reloads. It's still a footgun (edit the Tradeskill page, not the Loot page, for these two), which is why the tooltip warns about it.
 
 Don't try to "fix" this without a concrete user complaint. The duplicate registration is intentional (both contexts can produce the same Blizzard event), and any deduplication strategy has to pick one category to win, which is itself a policy decision.

@@ -7,14 +7,14 @@ Orient-yourself map for **Ka0s Pretty Chat**. This file is the high-level index;
 A WoW addon that overrides Blizzard's `GlobalStrings.lua` format strings — `LOOT_ITEM_SELF`, `COMBATLOG_XPGAIN_*`, `FACTION_STANDING_INCREASED`, etc. — to reformat system chat lines (loot, currency, money, reputation, XP, honor, tradeskill, misc) into a color-coded `Category | Context | Source | +/- value` layout. WoW's chat code reads `_G[GLOBALNAME]` lazily on every line, so overrides take effect uniformly across any chat UI (default Blizzard, ElvUI, Glass, …) without per-message hooks. Eight format-bearing categories (81 strings total) are addressed via a flat schema + `/pc` slash CLI + a Blizzard-panel sub-page per category.
 
 ```
-Defaults.lua  ─▶ ns.Defaults (categories + format strings + per-cat enabled)
+defaults/Defaults.lua  ─▶ ns.Defaults (categories + format strings + per-cat enabled)
                     │
-                    ├─▶ Schema.lua   ─▶ ns.Schema   (rows[], byPath[], single write path)
+                    ├─▶ settings/Schema.lua ─▶ ns.Schema  (rows[], byPath[], single write path)
                     │                       │
-                    │                       ├─▶ /pc set / get / list / reset    (PrettyChat.lua)
-                    │                       └─▶ Panel widget get/set            (Config.lua)
+                    │                       ├─▶ /pc set / get / list / reset   (settings/Slash.lua)
+                    │                       └─▶ Panel widget get/set           (settings/Panel.lua)
                     │
-                    └─▶ PrettyChat.lua ApplyStrings()
+                    └─▶ modules/Override.lua ApplyStrings()
                                 │
                                 ▼
                           _G[GLOBALNAME]   ◀── WoW chat code reads lazily on every line
@@ -22,29 +22,35 @@ Defaults.lua  ─▶ ns.Defaults (categories + format strings + per-cat enabled)
 
 GlobalStrings/   ─▶ ns.GlobalStrings (Blizzard reference, ~22,879 entries)
                        │
-                       └─▶ Config.lua "Original Format String" disabled input
+                       └─▶ settings/Panel.lua "Original Format String" disabled input
 ```
 
 ## Module Map
 
-Tier-1 flat layout. Load order is `PrettyChat.toc` (dependency, not alphabetical): libraries first, then `Compat → Locale → Constants → Defaults → Database → GlobalStrings chunks → PrettyChat → Schema → Config`.
+Tier-2 modular layout (`core/`, `defaults/`, `locales/`, `modules/`, `settings/`). Load order is `PrettyChat.toc` (dependency, not alphabetical): libraries first, then `core/Compat → core/Constants → core/Namespace → core/State → core/Util → core/Database → core/DebugLog → core/PrettyChat → defaults/Defaults → locales/enUS → GlobalStrings chunks → modules/Override → settings/Schema → settings/Slash → settings/Panel`.
 
 | Module | Publishes on `ns` | Role |
 |--------|-------------------|------|
-| `Compat.lua` | `ns.Compat` | Version-shim seam. `Compat.GetAddOnMetadata` (C_AddOns vs legacy global). |
-| `Locale.lua` | `ns.L` | Localization table with English-key fallback (`__index` returns the key). Seeds the enUS UI-string manifest. |
-| `Constants.lua` | `ns.Const`, `ns.PREFIX` | Panel layout constants, `Const.Color` palette, `Const.BUTTON_PAIR_REL`, and the shared cyan `[PC]` chat prefix. Side-effect-free. |
-| `Defaults.lua` | `ns.Defaults` | Category → format-string default table (label + default per string; per-category `enabled`). |
-| `Database.lua` | `ns.Database` | `SCHEMA_VERSION`, `global.schemaVersion` default, and `RunMigrations(db)` (empty migration set today). |
-| `PrettyChat.lua` | `ns.Print`, `ns.Debug`, `ns.State`, `ns.RenderSample`, `ns.COMMANDS` | AceAddon object, override pipeline (`OnEnable` snapshot + `ApplyStrings`), Test, and the `/pc` slash dispatcher. |
-| `Schema.lua` | `ns.Schema` | Builds `rows`/`byPath` from `ns.Defaults`; single write path (`Schema.Set`), load-time path validator, cross-registered-global map. |
-| `Config.lua` | `ns.Config.RegisterPanels` | Canvas-layout parent + one sub-page per category; per-string editor rows. |
+| `core/Compat.lua` | `ns.Compat` | Version-shim seam. `Compat.GetAddOnMetadata` (C_AddOns vs legacy global). |
+| `core/Constants.lua` | `ns.Const`, `ns.PREFIX` | Panel layout constants, `Const.Color` palette (incl. `azure` / `listHead` slash-output codes), `Const.BUTTON_PAIR_REL`, `Const.FONT_MONO` (vendored JetBrains Mono path), and the shared cyan `[PC]` chat prefix. Side-effect-free. |
+| `core/Namespace.lua` | `ns.name`, `ns.version` | Identity bootstrap — records the addon name + version so any module can read them without re-querying the TOC. |
+| `core/State.lua` | `ns.State` | Session-only runtime state (`{ debug = false }`); never persisted, reset every reload/login. |
+| `core/Util.lua` | `ns.Util` | Pure string helpers `trim` / `note` / `cmd` shared by the slash dispatcher. |
+| `core/Database.lua` | `ns.Database` | `SCHEMA_VERSION`, `global.schemaVersion` default, and `RunMigrations(db)` (empty migration set today). |
+| `core/DebugLog.lua` | `ns.DebugLog`, `ns.Debug` | On-screen debug console (monospace window) + the gated `ns.Debug(tag, fmt, …)` sink; the `SetEnabled` seam is the single owner of the session debug flag. |
+| `core/PrettyChat.lua` | `ns.Print` | AceAddon object + lifecycle (`OnInitialize` / `OnEnable`), the cyan `[PC]` chat printer, and the combat-gated `OpenConfig`. |
+| `defaults/Defaults.lua` | `ns.Defaults` | Category → format-string default table (label + default per string; per-category `enabled`). |
+| `locales/enUS.lua` | `ns.L` | Localization table with English-key fallback (`__index` returns the key). Seeds the enUS UI-string manifest. |
+| `modules/Override.lua` | `ns.RenderSample` | The override engine — `ApplyStrings`, the enable-cascade predicates, `ResetCategory` / `ResetAll`, and the Test / sample renderer. |
+| `settings/Schema.lua` | `ns.Schema` | Builds `rows`/`byPath` from `ns.Defaults`; single write path (`Schema.Set`), `Schema.FormatValue`, load-time path validator, cross-registered-global map. |
+| `settings/Slash.lua` | `ns.COMMANDS` | The `/pc` dispatcher — ordered `COMMANDS` table, `OnSlashCommand`, and every `list` / `get` / `set` / `reset` / `test` / `debug` handler. |
+| `settings/Panel.lua` | `ns.Config.RegisterPanels` | Canvas-layout parent + one sub-page per category; per-string editor rows. |
 
 Topic detail: [module-map.md](./module-map.md), [file-index.md](./file-index.md).
 
 ## Settings Schema
 
-`ns.Defaults` is the source data; `Schema.lua` turns it into an ordered `rows` list keyed by dot path. Four row kinds:
+`ns.Defaults` is the source data; `settings/Schema.lua` turns it into an ordered `rows` list keyed by dot path. Four row kinds:
 
 - `General.enabled` — addon-wide master toggle (bool). `General` is a **virtual category** with no entry in `ns.Defaults`; stored as `db.profile.enabled` at the profile root.
 - `<Category>.enabled` — per-category toggle (bool).
@@ -55,7 +61,7 @@ Every mutation goes through `ns.Schema.Set(path, value)` — the **single write 
 
 ## Slash Commands
 
-`/pc` and `/prettychat` dispatch through one ordered `COMMANDS` table in `PrettyChat.lua` (help text is generated from the same table). Verbs: `help`, `config`, `list`, `get`, `set`, `reset`, `resetall`, `test`, `debug`. `ns.COMMANDS` is published so the parent panel renders the same list. Chat input requires `||` for a literal `|`. Detail: [slash-commands.md](./slash-commands.md).
+`/pc` and `/prettychat` dispatch through one ordered `COMMANDS` table in `settings/Slash.lua` (help text is generated from the same table). Verbs: `help`, `config`, `version`, `list`, `get`, `set`, `reset`, `resetall`, `test`, `debug`. `ns.COMMANDS` is published so the parent panel renders the same list. Slash `list` / `get` / `set` output follows the mandated colour scheme (slash-commands-§5) via a shared `FormatKV` + `Schema.FormatValue`. Chat input requires `||` for a literal `|`. Detail: [slash-commands.md](./slash-commands.md).
 
 ## Event Subscriptions
 

@@ -20,12 +20,23 @@ libs\AceDB-3.0\AceDB-3.0.xml
 libs\AceConsole-3.0\AceConsole-3.0.xml
 libs\AceGUI-3.0\AceGUI-3.0.xml
 
-# Addon
-Compat.lua
-Locale.lua
-Constants.lua
-Defaults.lua
-Database.lua
+# Core (Compat loads first)
+core\Compat.lua
+core\Constants.lua
+core\Namespace.lua
+core\State.lua
+core\Util.lua
+core\Database.lua
+core\DebugLog.lua
+core\PrettyChat.lua
+
+# Defaults (data table — must precede settings\Schema.lua)
+defaults\Defaults.lua
+
+# Locales
+locales\enUS.lua
+
+# GlobalStrings (generated Blizzard reference data — must precede settings\Panel.lua)
 GlobalStrings\GlobalStrings_001.lua
 GlobalStrings\GlobalStrings_002.lua
 GlobalStrings\GlobalStrings_003.lua
@@ -36,6 +47,11 @@ GlobalStrings\GlobalStrings_007.lua
 GlobalStrings\GlobalStrings_008.lua
 GlobalStrings\GlobalStrings_009.lua
 GlobalStrings\GlobalStrings_010.lua
-PrettyChat.lua
-Schema.lua
-Config.lua
+
+# Modules (the override pipeline)
+modules\Override.lua
+
+# Settings (last — depend on everything else being initialized)
+settings\Schema.lua
+settings\Slash.lua
+settings\Panel.lua

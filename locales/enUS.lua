@@ -53,6 +53,7 @@ local enUS = {
     "Reset a category to defaults — `/pc reset <Category>`",
     "Reset every category to addon defaults",
     "Print sample chat lines — `/pc test [all | category <name> | formatstring <NAME>]`",
-    "Toggle debug logging — `/pc debug [on | off | toggle]`",
+    "Debug console — `/pc debug` shows it; `on`/`off` toggle logging",
+    "Print the addon version",
 }
 for _, s in ipairs(enUS) do L[s] = s end
