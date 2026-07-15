@@ -2,7 +2,7 @@
 
 Where each responsibility lives in the source tree. Match this map to the actual files before editing — `PrettyChat.toc` is the source of truth for load order.
 
-## Source tree (Tier-2 modular)
+## Source tree (modular)
 
 Source `.lua` is grouped under `core/`, `defaults/`, `locales/`, `modules/`, and `settings/`.
 
@@ -57,6 +57,6 @@ Source `.lua` is grouped under `core/`, `defaults/`, `locales/`, `modules/`, and
 ## Top-level docs
 
 - `README.md` — user-facing.
-- `CLAUDE.md` — stub (tier + standard link + pointer to `docs/`); full engineer brief in [agent-context.md](./agent-context.md).
+- `CLAUDE.md` — stub (standard link + pointer to `docs/`); full engineer brief in [agent-context.md](./agent-context.md).
 - `docs/ARCHITECTURE.md` — design overview + invariants + doc index (§15.3 sections).
 - `docs/*.md` — topic chunks (this file is one of them). Includes [smoke-tests.md](./smoke-tests.md), the manual in-game test suite. Automated headless coverage lives in `tests/` (`lua tests/run.lua`).

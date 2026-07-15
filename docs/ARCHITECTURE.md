@@ -27,7 +27,7 @@ GlobalStrings/   ─▶ ns.GlobalStrings (Blizzard reference, ~22,879 entries)
 
 ## Module Map
 
-Tier-2 modular layout (`core/`, `defaults/`, `locales/`, `modules/`, `settings/`). Load order is `PrettyChat.toc` (dependency, not alphabetical): libraries first, then `core/Compat → core/Constants → core/Namespace → core/State → core/Util → core/Database → core/DebugLog → core/PrettyChat → defaults/Defaults → locales/enUS → GlobalStrings chunks → modules/Override → settings/Schema → settings/Slash → settings/Panel`.
+Modular layout (`core/`, `defaults/`, `locales/`, `modules/`, `settings/`) — the single Ka0s layout (`layout-§1`). Load order is `PrettyChat.toc` (dependency, not alphabetical): libraries first, then `core/Compat → core/Constants → core/Namespace → core/State → core/Util → core/Database → core/DebugLog → core/PrettyChat → defaults/Defaults → locales/enUS → GlobalStrings chunks → modules/Override → settings/Schema → settings/Slash → settings/Panel`.
 
 | Module | Publishes on `ns` | Role |
 |--------|-------------------|------|

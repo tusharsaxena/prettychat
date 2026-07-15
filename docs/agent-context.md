@@ -6,7 +6,7 @@ Detailed working notes for Claude Code (and other LLM-assisted editors) on **Ka0
 
 A WoW addon that reformats system chat messages (loot, currency, money, reputation, XP, honor, tradeskill, misc) by overriding Blizzard's `GlobalStrings.lua` format strings — not by parsing chat events. That makes it compatible with any chat UI (default Blizzard, ElvUI, Glass, …) without configuration. Settings live in a Blizzard-panel sub-page per category plus a schema-driven `/pc` slash CLI; both surfaces share one write path.
 
-Tier-2 modular layout (`core/`, `defaults/`, `locales/`, `modules/`, `settings/`). Load order (`PrettyChat.toc`): libraries → `core/Compat → core/Constants → core/Namespace → core/State → core/Util → core/Database → core/DebugLog → core/PrettyChat → defaults/Defaults → locales/enUS → GlobalStrings chunks → modules/Override → settings/Schema → settings/Slash → settings/Panel`.
+Modular layout (`core/`, `defaults/`, `locales/`, `modules/`, `settings/`) — the single Ka0s layout (`layout-§1`). Load order (`PrettyChat.toc`): libraries → `core/Compat → core/Constants → core/Namespace → core/State → core/Util → core/Database → core/DebugLog → core/PrettyChat → defaults/Defaults → locales/enUS → GlobalStrings chunks → modules/Override → settings/Schema → settings/Slash → settings/Panel`.
 
 ## Hard rules
 
