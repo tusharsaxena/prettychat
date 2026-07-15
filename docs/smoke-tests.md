@@ -1,6 +1,6 @@
 # Smoke tests
 
-There are no automated tests for PrettyChat — the addon's behavior depends on WoW client state (`_G[GLOBALNAME]`, AceDB profile, the live chat frame, the Settings panel) that can't be exercised outside the game. Validation is manual, in-game, against this checklist.
+PrettyChat's automated coverage is the headless harness under `tests/` (`lua tests/run.lua` — see [testing.md](./testing.md)). It exercises the schema, sample renderer, apply pipeline, migration runner, slash dispatcher, and debug console under stock Lua, but it can't reach behavior that depends on live WoW client state — `_G[GLOBALNAME]`, the AceDB profile, the live chat frame, the Settings panel. This checklist is that second layer: manual, in-game validation of what stock Lua can't exercise.
 
 Run the **quick recipe** for routine work. Run the **full suite** before tagging a release, after touching `OnEnable` / `ApplyStrings` / `settings/Schema.lua`, or after a WoW client patch.
 
