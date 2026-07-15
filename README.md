@@ -2,6 +2,7 @@
 
 ![wow](https://img.shields.io/badge/WoW-Midnight_12.0.7-orange)
 ![CurseForge Version](https://img.shields.io/curseforge/v/919766)
+![tests](https://img.shields.io/badge/tests-36%2F36_passing-brightgreen)
 ![license](https://img.shields.io/badge/license-MIT-green)
 [![Ka0s Standard](https://img.shields.io/badge/Ka0s_Standard-compliant-blue)](https://github.com/tusharsaxena/WowAddonStandards)
 
@@ -73,11 +74,24 @@ A few user-facing behaviors worth knowing. Implementation details live in [ARCHI
 PrettyChat ships a headless test harness that runs under stock Lua 5.1 with no WoW client — it loads the addon sources into a mock WoW environment and exercises the schema, sample renderer, apply pipeline, migration runner, slash dispatcher, and debug console.
 
 ```sh
-lua tests/run.lua   # unit/characterization suites (exits non-zero on failure)
-luacheck .          # static analysis (config in .luacheckrc)
+lua tests/run.lua          # run every suite (exits non-zero on failure)
+lua tests/run.lua --list   # print the test-case inventory (runs nothing)
+luacheck .                 # static analysis (config in .luacheckrc)
 ```
 
-Both must be green before any commit. For in-game validation (panel rendering, live chat overrides, positional `%n$s` formats that stock Lua can't render), follow the manual [smoke-test suite](./docs/smoke-tests.md) — it lists which invariant each test guards.
+Both `lua tests/run.lua` and `luacheck .` must be green before any commit. The suites register named `test(name, fn)` cases; the [`tests`](https://img.shields.io/badge/tests-36%2F36_passing-brightgreen) badge above shows the pass/total.
+
+The authoritative case count lives in the **generated** inventory [`docs/test-cases.md`](./docs/test-cases.md) — every case, grouped by suite, with per-suite and grand totals. It is produced by the runner's `--list` mode, never hand-edited:
+
+```sh
+lua tests/run.lua --list > docs/test-cases.md   # regenerate the inventory
+# verify it's in sync (CR-agnostic, since docs are CRLF on disk):
+diff --strip-trailing-cr <(lua tests/run.lua --list) docs/test-cases.md
+```
+
+**Keeping the inventory & badge in sync.** Whenever the suite changes — a case added, removed, or renamed, or the pass count moves (i.e. whenever a failing test is resolved) — regenerate `docs/test-cases.md` and update the README `tests` badge count **in the same change**, never as a follow-up.
+
+For in-game validation (panel rendering, live chat overrides, positional `%n$s` formats that stock Lua can't render), follow the manual [smoke-test suite](./docs/smoke-tests.md) — it lists which invariant each test guards.
 
 ## FAQ
 

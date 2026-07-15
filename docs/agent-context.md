@@ -24,7 +24,8 @@ Tier-2 modular layout (`core/`, `defaults/`, `locales/`, `modules/`, `settings/`
 
 There is now a headless harness. **After every change, `lua tests/run.lua` must be green and `luacheck .` clean** (§14A commit gate).
 
-- `tests/run.lua` loads the addon sources into a mock WoW env (`tests/wow_mock.lua`, `tests/loader.lua`) under stock Lua 5.1 and runs suites: `test_schema`, `test_render`, `test_apply`, `test_database`, `test_debuglog`, `test_slash`.
+- `tests/run.lua` loads the addon sources into a mock WoW env (`tests/wow_mock.lua`, `tests/loader.lua`) under stock Lua 5.1 and runs suites: `test_schema`, `test_render`, `test_apply`, `test_database`, `test_debuglog`, `test_slash`. Each suite registers named `test(name, fn)` cases via `ctx.test`; a case passes when its body neither errors nor trips a failed assertion.
+- The **authoritative pass count** is the generated inventory [`docs/test-cases.md`](./test-cases.md) (testing-§5), not any hand-written number. Produce it with the runner's non-executing `--list` mode: `lua tests/run.lua --list > docs/test-cases.md`; verify sync with `diff --strip-trailing-cr <(lua tests/run.lua --list) docs/test-cases.md` (CR-agnostic, since docs are CRLF on disk). The README `tests` badge mirrors its total.
 - `.luacheckrc` configures the lint (`std=lua51`; excludes `libs/ GlobalStrings/ tests/ docs/audits docs/reviews`).
 - Manual in-game validation still matters — see [smoke-tests.md](./smoke-tests.md) (routine quick recipe + full suite for pre-release / post-patch / post-touch of `OnEnable` / `ApplyStrings` / `settings/Schema.lua` / `settings/Panel.lua`).
 
