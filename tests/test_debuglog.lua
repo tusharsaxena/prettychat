@@ -14,6 +14,7 @@ return function(ctx)
     local inst  = ctx.loadAddon()
     local ns    = inst.ns
     local addon = inst.addon
+    local env   = inst.env
     local D     = ns.DebugLog
 
     -- FONT_MONO points at the vendored JetBrains Mono TTF (debug-logging-§2).
@@ -36,6 +37,32 @@ return function(ctx)
     t.eq(ns.State.debug, true, "/pc debug on enables session state")
     debugCmd(ns, addon, "off")
     t.eq(ns.State.debug, false, "/pc debug off disables session state")
+
+    -- Colour-coded chat ack (debug-logging-§5): ON green 40ff40, OFF red ff4040, via [PC].
+    local msgs = env.DEFAULT_CHAT_FRAME.messages
+    debugCmd(ns, addon, "on")
+    t.truthy(msgs[#msgs]:find("|cff40ff40ON|r", 1, true), "on ack colours ON green (40ff40)")
+    debugCmd(ns, addon, "off")
+    t.truthy(msgs[#msgs]:find("|cffff4040OFF|r", 1, true), "off ack colours OFF red (ff4040)")
+
+    -- [Init] session summary emitted on enable, immediately after the bracket (§5/§8).
+    D:Clear()
+    D:SetEnabled(true)
+    local bracketIdx, initIdx
+    for i, line in ipairs(D.buffer) do
+        if line:find("%[Debug%] logging enabled") then bracketIdx = i end
+        if line:find("%[Init%]") then initIdx = i end
+    end
+    t.truthy(bracketIdx, "enable writes the [Debug] logging enabled bracket line")
+    t.truthy(initIdx and bracketIdx and initIdx > bracketIdx,
+        "[Init] session summary follows the enable bracket")
+    t.truthy(initIdx and D.buffer[initIdx]:find("PrettyChat v", 1, true),
+        "[Init] carries the addon name + version")
+    t.truthy(initIdx and D.buffer[initIdx]:find("schema v", 1, true),
+        "[Init] carries the schema/DB version")
+    t.truthy(initIdx and D.buffer[initIdx]:find("profile 'Default'", 1, true),
+        "[Init] carries the active profile")
+    D:SetEnabled(false)  -- leave logging off for the blocks below
 
     -- Bare /pc debug toggles the window only — it MUST NOT change the flag.
     ns.State.debug = true

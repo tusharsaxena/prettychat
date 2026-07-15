@@ -125,6 +125,9 @@ function M.newEnv()
             end
             db.profile = db.profile or {}
             db.global  = db.global or {}
+            -- Single shared Default profile (real AceDB was created with the default-profile
+            -- flag). GetCurrentProfile lets the debug console's [Init] summary read it.
+            db.GetCurrentProfile = function() return "Default" end
             return db
         end,
     }

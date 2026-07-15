@@ -1,8 +1,12 @@
 local addonName, ns = ...
 ns.DebugLog = ns.DebugLog or {}
 local D = ns.DebugLog
-local note = ns.Util.note
 local frame
+
+-- ON/OFF state colours (debug-logging-§5): the chat ack and the title-bar toggle MUST use
+-- the same green/red so the flag reads identically in chat and on the console header.
+local COL_ON_HEX,  COL_OFF_HEX = "|cff40ff40", "|cffff4040"
+local COL_ON_RGB,  COL_OFF_RGB = { 0.25, 1.00, 0.25 }, { 1.00, 0.25, 0.25 }  -- 40ff40 / ff4040
 
 -- On-screen debug console (Ka0s standard, debug-logging). Debug output (ns.Debug) renders
 -- here in a monospace font instead of spamming the chat frame. Session-only: the enabled
@@ -230,25 +234,58 @@ function D:Toggle()
     if f:IsShown() then f:Hide() else f:Show() end
 end
 
+-- One-line self-identifying summary for the [Init] line (debug-logging-§5/§8): addon
+-- name+version, schema/DB version, active profile. Read from the addon's AceDB; guarded so
+-- a not-yet-ready db can't error. All values are plain (no combat-secret risk), so direct
+-- formatting is safe.
+function D.SessionSummary()
+    local name    = ns.name or "PrettyChat"
+    local version = ns.version or "?"
+    local schema, profile = "?", "?"
+    local addon = LibStub("AceAddon-3.0"):GetAddon("PrettyChat", true)
+    local db = addon and addon.db
+    if db then
+        if db.global and db.global.schemaVersion ~= nil then
+            schema = tostring(db.global.schemaVersion)
+        end
+        if type(db.GetCurrentProfile) == "function" then
+            local ok, p = pcall(db.GetCurrentProfile, db)
+            if ok and p then profile = tostring(p) end
+        end
+    end
+    return ("%s v%s, schema v%s, profile '%s'"):format(name, version, schema, profile)
+end
+
 -- Single seam for changing debug state. The slash command and the header toggle both call
 -- this so the chat ack and the header label stay consistent. Session-only (debug-logging-§5).
 function D:SetEnabled(on)
     on = not not on
     ns.State.debug = on
     D:RefreshHeader()
-    ns.Print(note("debug logging " .. (on and "enabled" or "disabled")))
+    -- Colour-coded chat ack (debug-logging-§5): the state word is ON green / OFF red,
+    -- matching the header toggle, through the shared [PC] printer (never a raw print or a
+    -- hand-written tag).
+    local word = on and (COL_ON_HEX .. "ON|r") or (COL_OFF_HEX .. "OFF|r")
+    ns.Print("debug logging " .. word)
     -- Bracket every session with a console line at both ends. Write through D:Add rather
     -- than ns.Debug so the "disabled" line still lands after ns.State.debug has flipped off
     -- (ns.Debug is gated on the flag, D:Add is not).
     D:Add("Debug", on and "logging enabled" or "logging disabled")
+    -- On enable, a self-identifying [Init] session summary immediately after the bracket
+    -- (debug-logging-§5/§8): which build, which schema, which profile. Raw D:Add (not the
+    -- gated sink). This is the visible boot summary — a login-time one would be gated off
+    -- (the flag is session-only, off at login) and never render.
+    if on then
+        D:Add("Init", D.SessionSummary())
+    end
 end
 
 function D:RefreshHeader()
     if not (frame and frame.debugToggle) then return end
     local on = ns.State and ns.State.debug
     frame.debugToggle:SetText(on and "Debug: ON" or "Debug: OFF")
-    if on then frame.debugToggle:SetTextColor(0.30, 0.85, 0.30)
-    else frame.debugToggle:SetTextColor(0.90, 0.30, 0.30) end
+    local rgb = on and COL_ON_RGB or COL_OFF_RGB
+    frame.debugToggle:SetTextColor(rgb[1], rgb[2], rgb[3])
 end
 
 -- Global debug sink. No-op (zero alloc) when debug is off; otherwise appends to the console.

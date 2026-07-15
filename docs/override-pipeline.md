@@ -82,7 +82,7 @@ Runs from:
 - `Schema.Set` (every settings mutation) — `Schema.Set` calls `ApplyStrings` directly after the row's `set()` writes the DB. Row `set()` closures themselves are pure DB writes; they do not trigger `ApplyStrings` so a future `Schema.SetMany` / preset-load can apply once per batch.
 - `PrettyChat:ResetCategory(cat)` and `PrettyChat:ResetAll()` — both bypass `Schema.Set` (they zero out whole sub-tables, not write through a single row), so they call `ApplyStrings` and `Schema.NotifyPanelChange` themselves.
 
-`ApplyStrings` returns `(applied, restored)` counts rather than logging them itself, so each pass is summarised in **one** caller line (debug-logging-§8/§9): `[Boot]` at enable, `[Reset] <cat|all> → applied N restored M` on a reset. A settings change logs only `[Set] <path> = <value>` at the write seam (§10) — the re-apply is implied and not re-echoed. (Loot lines themselves never log: the addon hooks no events; it only swaps `_G[GLOBALNAME]`.)
+`ApplyStrings` returns `(applied, restored)` counts rather than logging them itself, so each pass is summarised in **one** caller line (debug-logging-§8/§9): `[Reset] <cat|all> → applied N restored M` on a reset. A settings change logs only `[Set] <path> = <value>` at the write seam (§10) — the re-apply is implied and not re-echoed. `OnEnable` no longer logs a boot line (the session-only debug flag is off at load, so it would never render); the self-identifying `[Init]` summary rides the `DebugLog:SetEnabled` seam instead (debug-logging-§5). (Loot lines themselves never log: the addon hooks no events; it only swaps `_G[GLOBALNAME]`.)
 
 Idempotent — calling it multiple times leaves `_G` in the same state.
 

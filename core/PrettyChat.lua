@@ -54,26 +54,18 @@ function PrettyChat:OnEnable()
             self.originalStrings[globalName] = _G[globalName]
         end
     end
-    local snapshot = 0
-    for _ in pairs(self.originalStrings) do snapshot = snapshot + 1 end
-    local applied, restored = self:ApplyStrings()
+    self:ApplyStrings()
 
     -- Settings.RegisterCanvasLayoutCategory is allowed in OnEnable for a
     -- non-LoD addon (OnEnable fires after the Settings API is live and
     -- after PLAYER_LOGIN). Folding panel registration into the AceAddon
     -- lifecycle removes Panel.lua's parallel PLAYER_LOGIN bootstrap.
-    local panels = false
     if ns.Config and ns.Config.RegisterPanels then
         ns.Config.RegisterPanels()
-        panels = true
     end
-
-    -- One-line boot summary (debug-logging-§8 lifecycle): schema version, unique globals
-    -- captured, the initial apply result, and whether the options panels registered.
-    local ver = (self.db and self.db.global and self.db.global.schemaVersion)
-        or (ns.Database and ns.Database.SCHEMA_VERSION) or 0
-    ns.Debug("Boot", "schema v%d · %d globals · applied %d restored %d · panels %s",
-        ver, snapshot, applied, restored, panels and "ok" or "skipped")
+    -- No boot-summary debug line here: the session-only debug flag is off at load, so it
+    -- would never render. The self-identifying [Init] summary rides the DebugLog:SetEnabled
+    -- seam instead (debug-logging-§5/§8).
 end
 
 -- Expand the parent category in the Blizzard Settings left tree so
