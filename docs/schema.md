@@ -28,12 +28,12 @@ function Schema.Set(path, value)
     row.set(value)                              -- pure DB write
     PrettyChat:ApplyStrings()                   -- reconcile live _G overrides
     Schema.NotifyPanelChange(row.category)      -- refresh the affected sub-page
-    ns.Debug("Set", "%s = %s", path, tostring(value))  -- trace to the debug console
+    ns.Debug("Set", "%s = %s", path, Schema.FormatValue(row, value))  -- [Set] trace (§10)
     return true
 end
 ```
 
-The `ns.Debug("Set", …)` line is a no-op unless `/pc debug on` is active; when on, every write shows up as a `[Set]` line in the on-screen debug console (the paired `[Apply]` line comes from `ApplyStrings`).
+The `ns.Debug("Set", …)` line is the single settings-change trace (debug-logging-§10): a no-op unless `/pc debug on`, and when on it logs exactly one `[Set] <path> = <value>` line per write (value via the shared `Schema.FormatValue`, so it reads like `/pc get`). The `ApplyStrings` re-apply it triggers is an implied consequence and is deliberately **not** re-echoed.
 
 Both surfaces go through the same row's `set()`:
 

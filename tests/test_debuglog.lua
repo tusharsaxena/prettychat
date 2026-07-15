@@ -65,14 +65,23 @@ return function(ctx)
     t.truthy(D.buffer[#D.buffer]:find("| %[Loot%] item x2$"),
         "ns.Debug renders the format args into a [tag]-prefixed line")
 
-    -- Real producers: a schema write logs both the [Set] and the [Apply] pass it triggers
-    -- (the ns.Debug call sites in settings/Schema.lua and modules/Override.lua).
+    -- Producers (debug-logging-§8/§9/§10): a settings change logs exactly one [Set] line at
+    -- the write seam — no separate [Apply] echo (folded per §10). A bulk reset bypasses the
+    -- seam, so it logs one [Reset] summary carrying the material apply counts.
     ns.State.debug = true
     D:Clear()
     ns.Schema.Set("General.enabled", false)
-    local joined = table.concat(D.buffer, "\n")
-    t.truthy(joined:find("%[Set%] General%.enabled = false"),
-        "Schema.Set emits a [Set] debug line")
-    t.truthy(joined:find("%[Apply%] addon="),
-        "ApplyStrings emits an [Apply] debug line")
+    local setJoined = table.concat(D.buffer, "\n")
+    t.truthy(setJoined:find("%[Set%] General%.enabled = false"),
+        "Schema.Set emits one [Set] <path> = <value> line")
+    t.falsy(setJoined:find("%[Apply%]"),
+        "no separate [Apply] line per settings change")
+
+    D:Clear()
+    addon:ResetAll()
+    local resetJoined = table.concat(D.buffer, "\n")
+    t.truthy(resetJoined:find("%[Reset%] all"),
+        "ResetAll emits a [Reset] summary line")
+    t.truthy(resetJoined:find("applied %d+ restored %d+"),
+        "[Reset] carries the material apply counts")
 end

@@ -54,15 +54,26 @@ function PrettyChat:OnEnable()
             self.originalStrings[globalName] = _G[globalName]
         end
     end
-    self:ApplyStrings()
+    local snapshot = 0
+    for _ in pairs(self.originalStrings) do snapshot = snapshot + 1 end
+    local applied, restored = self:ApplyStrings()
 
     -- Settings.RegisterCanvasLayoutCategory is allowed in OnEnable for a
     -- non-LoD addon (OnEnable fires after the Settings API is live and
     -- after PLAYER_LOGIN). Folding panel registration into the AceAddon
     -- lifecycle removes Panel.lua's parallel PLAYER_LOGIN bootstrap.
+    local panels = false
     if ns.Config and ns.Config.RegisterPanels then
         ns.Config.RegisterPanels()
+        panels = true
     end
+
+    -- One-line boot summary (debug-logging-§8 lifecycle): schema version, unique globals
+    -- captured, the initial apply result, and whether the options panels registered.
+    local ver = (self.db and self.db.global and self.db.global.schemaVersion)
+        or (ns.Database and ns.Database.SCHEMA_VERSION) or 0
+    ns.Debug("Boot", "schema v%d · %d globals · applied %d restored %d · panels %s",
+        ver, snapshot, applied, restored, panels and "ok" or "skipped")
 end
 
 -- Expand the parent category in the Blizzard Settings left tree so
@@ -97,15 +108,20 @@ function PrettyChat:OpenConfig()
     -- grey notice rather than deferring (Ka0s standard, options-ui-§2).
     if InCombatLockdown and InCombatLockdown() then
         ns.Print(Color.grey .. "cannot open settings during combat — Blizzard's category-switch is protected" .. Color.reset)
+        ns.Debug("Config", "refused (in combat)")
         return
     end
-    if not (Settings and Settings.OpenToCategory) then return end
-    if not self.optionsCategoryID then return end
+    if not (Settings and Settings.OpenToCategory) or not self.optionsCategoryID then
+        ns.Debug("Config", "unavailable (Settings API / category not ready)")
+        return
+    end
     local opened = Settings.OpenToCategory(self.optionsCategoryID)
     if opened == false then
         ns.Print(Color.grey .. "could not open settings panel — category not registered" .. Color.reset)
+        ns.Debug("Config", "blocked (category not registered)")
         return
     end
+    ns.Debug("Config", "opened")
     if not expandMainCategory(self.optionsCategory) and not self._expandWarned then
         self._expandWarned = true
         ns.Print(Color.grey .. "(could not auto-expand the Pretty Chat sub-tree — click the parent row to expand)" .. Color.reset)

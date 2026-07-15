@@ -83,7 +83,9 @@ function PrettyChat:ApplyStrings()
             end
         end
     end
-    ns.Debug("Apply", "addon=%s applied=%d restored=%d", tostring(addonEnabled), applied, restored)
+    -- Return the pass counts so the caller (Schema.Set / a reset / boot) can fold them into
+    -- its own single debug line — one summary per pass, never per string (debug-logging-§9).
+    return applied, restored
 end
 
 function PrettyChat:ResetCategory(category)
@@ -95,19 +97,23 @@ function PrettyChat:ResetCategory(category)
     elseif self.db.profile.categories[category] then
         self.db.profile.categories[category] = nil
     end
-    self:ApplyStrings()
+    local applied, restored = self:ApplyStrings()
     if ns.Schema and ns.Schema.NotifyPanelChange then
         ns.Schema.NotifyPanelChange(category)
     end
+    -- Bulk mutation (debug-logging-§8): a reset bypasses the Schema.Set `[Set]` seam, so it
+    -- carries its own summary with the material effect (how many strings reverted).
+    ns.Debug("Reset", "%s → applied %d restored %d", category, applied, restored)
 end
 
 function PrettyChat:ResetAll()
     self.db.profile.enabled    = nil
     self.db.profile.categories = {}
-    self:ApplyStrings()
+    local applied, restored = self:ApplyStrings()
     if ns.Schema and ns.Schema.NotifyPanelChange then
         ns.Schema.NotifyPanelChange()  -- nil → all categories
     end
+    ns.Debug("Reset", "all → applied %d restored %d", applied, restored)
 end
 
 -- ---------------------------------------------------------------------

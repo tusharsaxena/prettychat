@@ -254,7 +254,10 @@ function Schema.Set(path, value)
     row.set(value)
     PrettyChat:ApplyStrings()
     Schema.NotifyPanelChange(row.category)
-    ns.Debug("Set", "%s = %s", path, tostring(value))
+    -- The single settings-change trace (debug-logging-§10): logged once here, at the write
+    -- seam, as `[Set] <path> = <value>` (shared value formatter, so it reads like /pc get).
+    -- ApplyStrings' re-apply is an implied consequence and is deliberately not re-echoed.
+    ns.Debug("Set", "%s = %s", path, Schema.FormatValue(row, value))
     return true
 end
 

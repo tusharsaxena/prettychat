@@ -55,7 +55,7 @@ function PrettyChat:ApplyStrings()
     local addonEnabled = self:IsAddonEnabled()
     -- Deterministic iteration (PC-16): fixed CATEGORY_ORDER, sorted names within each
     -- category, so a global registered under two categories resolves the same way every
-    -- reload. (Elided here: applied/restored counters + the ns.Debug("Apply", …) line.)
+    -- reload. (Elided here: applied/restored counters; ApplyStrings returns them.)
     for _, category in ipairs(ns.Schema.CATEGORY_ORDER) do
         local catData = ns.Defaults[category]
         if catData and catData.strings then
@@ -82,7 +82,7 @@ Runs from:
 - `Schema.Set` (every settings mutation) — `Schema.Set` calls `ApplyStrings` directly after the row's `set()` writes the DB. Row `set()` closures themselves are pure DB writes; they do not trigger `ApplyStrings` so a future `Schema.SetMany` / preset-load can apply once per batch.
 - `PrettyChat:ResetCategory(cat)` and `PrettyChat:ResetAll()` — both bypass `Schema.Set` (they zero out whole sub-tables, not write through a single row), so they call `ApplyStrings` and `Schema.NotifyPanelChange` themselves.
 
-When `/pc debug on` is active, each `ApplyStrings` pass emits an `[Apply] addon=… applied=N restored=N` line to the on-screen debug console, and each `Schema.Set` emits a `[Set] <path> = <value>` line — the two `ns.Debug` producers in the addon today. (Loot lines themselves never log: the addon hooks no events; it only swaps `_G[GLOBALNAME]`.)
+`ApplyStrings` returns `(applied, restored)` counts rather than logging them itself, so each pass is summarised in **one** caller line (debug-logging-§8/§9): `[Boot]` at enable, `[Reset] <cat|all> → applied N restored M` on a reset. A settings change logs only `[Set] <path> = <value>` at the write seam (§10) — the re-apply is implied and not re-echoed. (Loot lines themselves never log: the addon hooks no events; it only swaps `_G[GLOBALNAME]`.)
 
 Idempotent — calling it multiple times leaves `_G` in the same state.
 
