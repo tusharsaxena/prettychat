@@ -116,6 +116,26 @@ function PrettyChat:ResetAll()
     ns.Debug("Reset", "all → applied %d restored %d", applied, restored)
 end
 
+-- Restore ONE string to its untouched default. A per-string reset must
+-- clear BOTH per-string dimensions — the custom format AND the disable
+-- flag — so it matches the full-reset semantics of ResetCategory /
+-- ResetAll (which wipe every dimension at once). Resetting only the
+-- format would leave a previously-disabled string half-reset.
+function PrettyChat:ResetString(category, globalName)
+    local catDB = self.db.profile.categories[category]
+    if catDB then
+        if catDB.strings then catDB.strings[globalName] = nil end
+        if catDB.disabledStrings then catDB.disabledStrings[globalName] = nil end
+    end
+    local applied, restored = self:ApplyStrings()
+    if ns.Schema and ns.Schema.NotifyPanelChange then
+        ns.Schema.NotifyPanelChange(category)
+    end
+    -- Bulk mutation (debug-logging-§8): bypasses the Schema.Set `[Set]` seam,
+    -- so it carries its own summary with the material effect.
+    ns.Debug("Reset", "%s.%s → applied %d restored %d", category, globalName, applied, restored)
+end
+
 -- ---------------------------------------------------------------------
 -- Test — synthesize sample chat messages from each active format string
 -- ---------------------------------------------------------------------

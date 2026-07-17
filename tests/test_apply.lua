@@ -45,6 +45,25 @@ return function(ctx)
         t.eq(env[g], def, "string back on reapplies override")
     end)
 
+    test("ResetString clears both the custom format and the per-string disable", function()
+        -- A per-string reset must restore BOTH dimensions to default (enabled
+        -- + default format), matching ResetCategory/ResetAll. Dirty both first.
+        Schema.Set(cat .. "." .. g .. ".enabled", false)
+        Schema.Set(cat .. "." .. g .. ".format", "CUSTOM:" .. tostring(g))
+        t.falsy(inst.addon:IsStringEnabled(cat, g), "string disabled before reset")
+        t.eq(Schema.Get(cat .. "." .. g .. ".format"), "CUSTOM:" .. tostring(g),
+            "custom format stored before reset")
+
+        inst.addon:ResetString(cat, g)
+
+        t.truthy(inst.addon:IsStringEnabled(cat, g), "reset re-enables the string")
+        t.eq(Schema.Get(cat .. "." .. g .. ".format"), def, "reset restores the default format")
+        local catDB = inst.addon.db.profile.categories[cat]
+        t.falsy(catDB and catDB.disabledStrings and catDB.disabledStrings[g],
+            "reset clears the disabledStrings entry")
+        t.eq(env[g], def, "reset re-applies the default override to live chat")
+    end)
+
     test("cross-registered global resolves to the last CATEGORY_ORDER registrant, stably", function()
         -- Deterministic cross-registered apply (PC-16): a global registered
         -- under more than one category must resolve to the documented winner

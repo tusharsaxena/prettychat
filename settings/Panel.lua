@@ -363,8 +363,10 @@ end
 -- column only ever holds a checkbox, a short GLOBALNAME caption, and a
 -- Reset button, all of which fit comfortably.
 --
--- Reset button is always visible (the click is a no-op when value
--- already equals default). The Preview EditBox uses InputBoxTemplate,
+-- Reset button is always visible and restores BOTH per-string dimensions
+-- (custom format + enable state) to default via PrettyChat:ResetString,
+-- matching the category/all resets (a no-op when already at default).
+-- The Preview EditBox uses InputBoxTemplate,
 -- whose backing FontString renders WoW `|c…|r` color escapes, so the
 -- rendered sample shows with its formatting intact.
 -- ---------------------------------------------------------------------
@@ -460,7 +462,7 @@ local function buildStringRow(scroll, category, globalName, strData, refreshers)
     resetBtn:SetText(L["Reset"])
     resetBtn:SetRelativeWidth(LEFT_W)
     resetBtn:SetCallback("OnClick", function()
-        ns.Schema.Set(formatPath, strData.default)
+        PrettyChat:ResetString(category, globalName)
     end)
     attachTooltip(resetBtn, L["Reset"],
         L["Restore this string to its default."])

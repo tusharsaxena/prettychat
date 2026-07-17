@@ -20,12 +20,13 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - malformed conversion surfaces as nil + error string
 - a real Blizzard-style default renders without error
 
-### test_apply.lua (5)
+### test_apply.lua (6)
 
 - override is applied by default when all three layers are on
 - master toggle off restores original, back on reapplies
 - category toggle off restores original, back on reapplies
 - per-string toggle off restores original, back on reapplies
+- ResetString clears both the custom format and the per-string disable
 - cross-registered global resolves to the last CATEGORY_ORDER registrant, stably
 
 ### test_database.lua (5)
@@ -62,8 +63,8 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 |-------|------:|
 | test_schema.lua | 7 |
 | test_render.lua | 5 |
-| test_apply.lua | 5 |
+| test_apply.lua | 6 |
 | test_database.lua | 5 |
 | test_debuglog.lua | 10 |
 | test_slash.lua | 4 |
-| **Total** | **36** |
+| **Total** | **37** |
