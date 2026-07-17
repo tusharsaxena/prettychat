@@ -233,7 +233,7 @@ local function createPanel(name, title, opts)
     body:SetPoint("BOTTOMRIGHT", panel, "BOTTOMRIGHT", 0, 0)
     panel.body = body
 
-    return { panel = panel, body = body, scroll = nil }
+    return { panel = panel, body = body, scroll = nil, defaultsBtn = defaultsBtn }
 end
 
 local function ensureScroll(ctx)
