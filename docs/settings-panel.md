@@ -52,7 +52,8 @@ All layout dimensions live in `core/Constants.lua` (`ns.Const.PANEL_PADDING_X`, 
 | Control | Wire-up |
 |---------|---------|
 | Description label | One-line explainer: master toggle behaviour. |
-| **Enable PrettyChat** toggle | Bound to the `General.enabled` schema row. Master switch — when off, every Blizzard original is restored regardless of per-category settings. |
+| **Enable PrettyChat** toggle (50% row) | Bound to the `General.enabled` schema row. Master switch — when off, every Blizzard original is restored regardless of per-category settings. |
+| **Debug console** toggle (50% row, beside Enable) | *Not* schema-backed. Drives `ns.DebugLog:SetEnabled(value)` (and `:Show()` on enable) — the same seam as `/pc debug on\|off` and the console header toggle. Reflects the **session-only** `ns.State.debug` flag (`debug-logging-§5`), so it resets to off on every reload. `SetEnabled` calls `Schema.NotifyPanelChange("General")` so toggling debug from any surface keeps this checkbox in sync. |
 | **Test** button (50% row) | Calls `PrettyChat:Test()`. Synthesizes a sample chat line from every format string regardless of enable toggles, so the preview works even when the addon is disabled. |
 | **Reset all to defaults** button (50% row) | Opens the `PRETTYCHAT_RESET_ALL` StaticPopup; on confirm, calls `PrettyChat:ResetAll()`. |
 

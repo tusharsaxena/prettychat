@@ -278,6 +278,12 @@ function D:SetEnabled(on)
     if on then
         D:Add("Init", D.SessionSummary())
     end
+    -- Keep the General-page "Debug console" checkbox in sync when the flag is
+    -- flipped from any other surface (the console header toggle, /pc debug on|off).
+    -- Guarded: settings/ loads after core/, and this only fires at runtime.
+    if ns.Schema and ns.Schema.NotifyPanelChange then
+        ns.Schema.NotifyPanelChange("General")
+    end
 end
 
 function D:RefreshHeader()

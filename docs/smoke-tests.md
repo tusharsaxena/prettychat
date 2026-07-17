@@ -173,6 +173,18 @@ Tests are grouped by subsystem. Each test has an ID (`T-NN`), a one-line **Why**
 - Steps: open Loot → `LOOT_ITEM_SELF`. Inspect the New EditBox value.
 - Expected: the displayed format uses `||cffff0000` (double pipes), NOT `|cffff0000` (single pipe). Now `/pc get Loot.LOOT_ITEM_SELF.format` — chat output shows the format with single pipes (raw stored form). Both surfaces are consistent in their respective conventions.
 
+#### T-29a — General-page Debug console checkbox (session-only)
+
+> Why: the General page's **Debug console** checkbox drives `ns.DebugLog:SetEnabled` (not the schema) and reflects the session-only `ns.State.debug` flag; `SetEnabled`'s `NotifyPanelChange("General")` keeps it in sync with the console header toggle and `/pc debug`.
+
+- Steps:
+  1. `/pc config` → **General**. Note **Enable** and **Debug console** sit side by side on one row.
+  2. Check **Debug console**. Expect: the on-screen debug console window opens, its header reads `Debug: ON` (green), and chat prints `[PC] debug logging ON`.
+  3. Leave the panel open. `/pc debug off` from chat. Expect: the General checkbox unchecks itself live; header flips to `Debug: OFF`.
+  4. `/pc debug on`. Expect: the checkbox re-checks live.
+  5. `/reload`, reopen `/pc config` → General. Expect: **Debug console** is **unchecked** (the flag is session-only and reset on reload).
+- Failure mode: checkbox persists as checked across `/reload` ⇒ the flag was wrongly persisted (must stay session-only per `debug-logging-§5`). Checkbox doesn't track `/pc debug` ⇒ the `NotifyPanelChange("General")` sync in `SetEnabled` regressed.
+
 ### L — Slash command surface
 
 #### T-30 — `/pc list` no-arg

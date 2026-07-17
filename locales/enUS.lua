@@ -27,6 +27,8 @@ local enUS = {
     "Reset every category and string to its default value.",
     "Reset every category and string to defaults?",
     "Defaults",
+    "Debug console",
+    "Session-only on-screen debug log for troubleshooting. Resets to off on every reload. `/pc debug` also opens or hides the window.",
     -- Per-string row
     "Enable",
     "Use the rewritten format for this message. When unchecked, Blizzard's original is used.",
