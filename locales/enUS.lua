@@ -28,7 +28,7 @@ local enUS = {
     "Reset every category and string to defaults?",
     "Defaults",
     "Debug console",
-    "Session-only on-screen debug log for troubleshooting. Resets to off on every reload. `/pc debug` also opens or hides the window.",
+    "Show or hide the on-screen debug console window. Logging on/off is separate — the window's own header toggle, or `/pc debug on|off`.",
     -- Per-string row
     "Enable",
     "Use the rewritten format for this message. When unchecked, Blizzard's original is used.",

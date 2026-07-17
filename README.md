@@ -45,7 +45,7 @@ You can turn any message type on or off, and change its wording and colors, from
 
 PrettyChat appears in the game's Settings panel under **Ka0s Pretty Chat**. The main page is just the logo, a short description, and the command list; the controls live on nine sub-pages, each a row of its own in the settings list:
 
-* **General** — the master **Enable PrettyChat** switch (turn this off and every message goes back to its original wording), a **Debug console** toggle (opens a small on-screen log for troubleshooting; off by default, resets each reload), a **Test** button that previews every message, and **Reset All to Defaults**.
+* **General** — the master **Enable PrettyChat** switch (turn this off and every message goes back to its original wording), a **Debug console** toggle (shows or hides a small on-screen log window for troubleshooting), a **Test** button that previews every message, and **Reset All to Defaults**.
 * **Loot** — item pickups, your own and group loot, bonus rolls, and currency from loot.
 * **Currency** — currency gained and lost.
 * **Money** — gold, silver, and copper: pickups, loot splits, guild bank deposits, and quest rewards.

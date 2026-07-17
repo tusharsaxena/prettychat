@@ -305,11 +305,11 @@ local function buildGeneralBody(ctx)
     scroll:AddChild(desc)
     addSpacer(scroll, Const.ROW_VSPACER)
 
-    -- Enable (master switch, persisted) and Debug console (session-only) sit
-    -- side by side on one Flow row. The debug flag is deliberately NOT
-    -- schema-backed: it drives ns.DebugLog:SetEnabled directly and resets on
-    -- every reload (debug-logging-§5), so this checkbox reflects live session
-    -- state, not a saved value.
+    -- Enable (master switch, persisted) and Debug console sit side by side on
+    -- one Flow row. The Debug console box is NOT schema-backed and does NOT
+    -- touch the debug logging flag: it only shows/hides the console window
+    -- (mirroring bare `/pc debug`). Logging on/off is a separate concern,
+    -- owned by the window's own header toggle and `/pc debug on|off`.
     local toggleRow = AceGUI:Create("SimpleGroup")
     toggleRow:SetLayout("Flow")
     toggleRow:SetFullWidth(true)
@@ -328,15 +328,13 @@ local function buildGeneralBody(ctx)
     local debug = AceGUI:Create("CheckBox")
     debug:SetLabel(L["Debug console"])
     debug:SetRelativeWidth(Const.BUTTON_PAIR_REL)
-    debug:SetValue(ns.State and ns.State.debug and true or false)
+    debug:SetValue(ns.DebugLog and ns.DebugLog:IsShown() or false)
     debug:SetCallback("OnValueChanged", function(_, _, value)
-        if ns.DebugLog and ns.DebugLog.SetEnabled then
-            ns.DebugLog:SetEnabled(value and true or false)
-            if value then ns.DebugLog:Show() end
-        end
+        if not ns.DebugLog then return end
+        if value then ns.DebugLog:Show() else ns.DebugLog:Hide() end
     end)
     attachTooltip(debug, L["Debug console"],
-        L["Session-only on-screen debug log for troubleshooting. Resets to off on every reload. `/pc debug` also opens or hides the window."])
+        L["Show or hide the on-screen debug console window. Logging on/off is separate — the window's own header toggle, or `/pc debug on|off`."])
     toggleRow:AddChild(debug)
 
     scroll:AddChild(toggleRow)
@@ -368,7 +366,7 @@ local function buildGeneralBody(ctx)
 
     return function()
         enable:SetValue(ns.Schema.Get("General.enabled") and true or false)
-        debug:SetValue(ns.State and ns.State.debug and true or false)
+        debug:SetValue(ns.DebugLog and ns.DebugLog:IsShown() or false)
     end
 end
 

@@ -57,6 +57,16 @@ local function makeCloseButton(parent, onClick)
     return b
 end
 
+-- Keep the General-page "Debug console" checkbox in sync with the window's
+-- actual visibility, however it was shown/hidden (that checkbox, bare
+-- /pc debug, the close button, Esc). Guarded: settings/ loads after core/,
+-- and this only fires at runtime once a refresher is registered.
+local function notifyPanelVisibility()
+    if ns.Schema and ns.Schema.NotifyPanelChange then
+        ns.Schema.NotifyPanelChange("General")
+    end
+end
+
 local function EnsureFrame()
     if frame then return frame end
 
@@ -127,7 +137,8 @@ local function EnsureFrame()
     frame.log = log
 
     applySkin(frame)
-    frame:HookScript("OnShow", function() D:RefreshHeader() end)
+    frame:HookScript("OnShow", function() D:RefreshHeader(); notifyPanelVisibility() end)
+    frame:HookScript("OnHide", notifyPanelVisibility)
     D:RefreshHeader()
 
     frame:Hide()
@@ -229,6 +240,9 @@ end
 
 function D:Show() EnsureFrame():Show() end
 function D:Hide() if frame then frame:Hide() end end
+-- Is the console window currently visible? Used by the General-page checkbox
+-- to mirror window state. Returns false before the frame is ever created.
+function D:IsShown() return (frame ~= nil and frame:IsShown()) and true or false end
 function D:Toggle()
     local f = EnsureFrame()
     if f:IsShown() then f:Hide() else f:Show() end
@@ -277,12 +291,6 @@ function D:SetEnabled(on)
     -- (the flag is session-only, off at login) and never render.
     if on then
         D:Add("Init", D.SessionSummary())
-    end
-    -- Keep the General-page "Debug console" checkbox in sync when the flag is
-    -- flipped from any other surface (the console header toggle, /pc debug on|off).
-    -- Guarded: settings/ loads after core/, and this only fires at runtime.
-    if ns.Schema and ns.Schema.NotifyPanelChange then
-        ns.Schema.NotifyPanelChange("General")
     end
 end
 
