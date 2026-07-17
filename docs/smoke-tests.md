@@ -141,6 +141,7 @@ Tests are grouped by subsystem. Each test has an ID (`T-NN`), a one-line **Why**
 
 - Steps: open a fresh Loot sub-page. Note that every per-string row has a Reset button visible. Click Reset on a row whose value matches the default.
 - Expected: button stays visible; nothing changes (no error, no panel re-render visible to the user).
+- Note: this covers only the always-visible / no-op-at-default behavior. For the per-string Reset *restoring both format and enable state*, see **T-56** (which supersedes the reset-effect coverage this test used to imply).
 
 #### T-26 — Per-category Defaults button (header)
 
@@ -346,14 +347,87 @@ Tests are grouped by subsystem. Each test has an ID (`T-NN`), a one-line **Why**
 - Steps: `/pc reset Bogus`.
 - Expected: chat prints `unknown category 'Bogus'. Valid: General, Loot, ...`. No state change.
 
+### R — Reset standardization
+
+The four reset entry points — per-string **Reset** button, per-category **Defaults** button, `/pc reset <cat>`, `/pc resetall` — share one semantic: each wipes every dimension it owns (custom format *and* enable/disable flag), re-applies via `ApplyStrings`, re-syncs the panel via `NotifyPanelChange`, and emits a `ns.Debug("Reset", …)` summary.
+
+#### T-56 — Per-string Reset restores format AND enable state
+
+> Why: `PrettyChat:ResetString` (`modules/Override.lua`) must clear both `strings[name]` (custom format) and `disabledStrings[name]` (disable flag); resetting only the format would leave a previously-disabled string half-reset. Supersedes the reset-effect coverage T-25 used to imply.
+
+- Setup: open `/pc config` → Loot → `LOOT_ITEM_SELF`. Do two things: (a) edit its New box to a visibly different format and press Enter, (b) uncheck its per-string **Enable**.
+- Steps: click that row's **Reset** button. Then loot an item yourself.
+- Expected: the Enable checkbox flips back to **checked**; the New box returns to the PrettyChat default text and becomes editable again; the Preview re-renders the default; the live loot line uses PrettyChat's default format (not Blizzard's original). `/pc get Loot.LOOT_ITEM_SELF.enabled` → `true`; `/pc get Loot.LOOT_ITEM_SELF.format` → the default.
+- Failure mode: checkbox stays unchecked / line stays Blizzard-original ⇒ the `disabledStrings[name] = nil` clear regressed.
+
+#### T-57 — Reset paths are semantically identical across all four entry points
+
+> Why: per-string Reset, per-category **Defaults**, `/pc reset <cat>`, and `/pc resetall` should all wipe every dimension they own — no path may leave a stale disable flag or override.
+
+- Setup: disable one Loot string via its toggle **and** edit its format.
+- Steps: repeat the same setup four times, clearing it once each way: (1) row **Reset** button, (2) Loot header **Defaults** button, (3) `/pc reset loot`, (4) `/pc resetall`.
+- Expected: all four leave `/pc list Loot` fully at default — no lingering `disabledStrings` entry, no lingering override. Confirm after a `/reload` too: `PrettyChatDB.profiles.Default.categories.Loot` is absent (or empty).
+
+#### T-58 — Every reset emits a consistent debug summary
+
+> Why: all three reset methods bypass the `Schema.Set` `[Set]` seam (debug-logging-§8), so each carries its own `ns.Debug("Reset", …)` line with the material effect (`applied` / `restored` counts).
+
+- Setup: `/pc debug` to open the console and enable logging (toggle green).
+- Steps: trigger each reset once — a row Reset, a category **Defaults**, `/pc resetall`.
+- Expected: three `[Reset]` lines appear in the console, formatted respectively `Loot.LOOT_ITEM_SELF → applied N restored M`, `Loot → applied N restored M`, `all → applied N restored M`. Counts are non-zero when overrides existed.
+
+#### T-59 — Reset reflects live in an open panel
+
+> Why: each reset calls `NotifyPanelChange(category)` (or nil → all), re-syncing visible widgets without a reopen.
+
+- Steps: open Loot, leave it open. From chat, after editing/disabling a couple of its strings: `/pc reset loot`.
+- Expected: the visible Enable checkboxes re-check and New boxes repopulate to defaults live, no panel reopen. `/pc resetall` from chat similarly refreshes whichever sub-page is showing.
+
+### M — Media (fonts, textures, borders)
+
+Validates the 2026-07-17 media audit conclusion in-game: every font, texture, and border is a Blizzard default **except** the debug console's vendored JetBrains Mono (the accepted `debug-logging-§2` deviation) and the addon's own logo. PrettyChat never restyles the chat frame itself.
+
+#### T-60 — Debug console renders with the vendored mono font + Blizzard chrome
+
+> Why: the console is the one accepted non-Blizzard font (`Const.FONT_MONO`, JetBrains Mono); its frame/border are Blizzard assets (`Interface\Buttons\WHITE8x8` backdrop, `Interface\Tooltips\UI-Tooltip-Border` edge).
+
+- Steps: `/pc debug`. Add a few lines (trigger a reset or two so entries appear).
+- Expected: log text is clearly **monospaced** (columns line up); the window has a dark backdrop with a thin tooltip-style border and no missing-texture boxes; the title bar reads "Pretty Chat — Debug" in a normal Blizzard font; the close glyph shows a proper **×**. Click **Copy** — the copy window's EditBox is also monospaced.
+- Failure mode: log text is proportional ⇒ the `.ttf` didn't ship / path wrong; a pink-and-black checkerboard ⇒ backdrop asset renamed in a client patch.
+
+#### T-61 — Settings panel header uses Blizzard font objects + atlas divider
+
+> Why: title is `GameFontNormalHuge`, divider is the `Options_HorizontalDivider` atlas tinted to the title's color — all Blizzard-default.
+
+- Steps: `/pc config`, open any sub-page.
+- Expected: the page title renders in the standard large gold Blizzard options font; a horizontal divider sits under it in the **same gold**; descriptions and section headings use normal Blizzard fonts. No custom typeface anywhere on the panel, no raw `|A…|a` escape text, no missing-texture box on the divider.
+
+#### T-62 — Landing-page logo texture renders
+
+> Why: the one intentional brand (non-Blizzard) texture — `media/logos/prettychat.logo.v2.tga`.
+
+- Steps: `/pc config` (lands on the parent page).
+- Expected: the PrettyChat logo image displays at the top-left of the landing page (not a blank/checkerboard box), followed by the tagline and slash-command list.
+- Failure mode: missing-texture box ⇒ the `.tga` wasn't packaged, or `LOGO_PATH` in `settings/Panel.lua` drifted.
+
+#### T-63 — Chat output imposes no font/texture of its own
+
+> Why: PrettyChat only injects `|c…|r` color escapes into `GlobalStrings` — it must never restyle the chat frame; font/texture there is inherited from the player's chat setup.
+
+- Setup: note your chat frame's current font (Blizzard default, or via Prat/ElvUI if installed).
+- Steps: enable PrettyChat, loot an item, gain XP.
+- Expected: the reformatted lines appear in the **exact same font/size/backdrop** as every other chat line — only the coloring/layout of the text differs. PrettyChat adds no border, no background, and no font change to the chat window.
+
 ## When to run what
 
 | Trigger | Run |
 |---------|-----|
 | Routine code change | Quick recipe |
 | Touched `OnEnable` / `ApplyStrings` / `settings/Schema.lua` | Quick recipe + B + O groups |
-| Touched `settings/Panel.lua` | Quick recipe + S + X groups |
+| Touched `settings/Panel.lua` | Quick recipe + S + X + M groups |
 | Touched slash command surface in `settings/Slash.lua` | Quick recipe + L + X groups |
+| Touched the reset paths (`ResetString` / `ResetCategory` / `ResetAll` in `modules/Override.lua`, or a Reset/Defaults button) | Quick recipe + R group |
+| Touched `core/DebugLog.lua`, `media/`, or panel chrome (fonts/textures/borders) | Quick recipe + M group |
 | Pre-release / pre-tag | Full suite |
 | Post WoW client patch | Full suite + regenerate `GlobalStrings/` per [global-strings.md](./global-strings.md#regenerating-chunks-after-a-wow-patch) |
 
