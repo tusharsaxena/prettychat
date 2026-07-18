@@ -8,7 +8,6 @@ local addonName, ns = ...
 local PrettyChat = LibStub("AceAddon-3.0"):GetAddon("PrettyChat")
 
 local Color  = ns.Const.Color
-local PREFIX = ns.PREFIX
 local note   = ns.Util.note
 
 function PrettyChat:GetStringValue(category, globalName)
@@ -215,12 +214,12 @@ end
 -- The slash dispatch (runTest) is responsible for canonicalizing the
 -- value before calling — Test only does an equality check.
 --
--- Every line carries the [PC] prefix so the report stays visually
--- distinct from real chat traffic interleaved with it.
+-- Every line routes through ns.Print, so each carries the [PC] prefix and
+-- the report stays visually distinct from real chat traffic interleaved with it.
 function PrettyChat:Test(filter)
-    DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. note("sample of every format string (preview ignores enable toggles):"))
+    ns.Print(note("sample of every format string (preview ignores enable toggles):"))
     if not self:IsAddonEnabled() then
-        DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. note("(addon is currently disabled — these formats aren't being applied to live chat)"))
+        ns.Print(note("(addon is currently disabled — these formats aren't being applied to live chat)"))
     end
 
     local labelName      = Color.green .. "Name: "      .. Color.reset
@@ -249,21 +248,21 @@ function PrettyChat:Test(filter)
 
                 if #sortedNames > 0 then
                     emittedAny = true
-                    DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. Color.gold .. "Category: " .. category .. Color.reset)
-                    DEFAULT_CHAT_FRAME:AddMessage(PREFIX)
+                    ns.Print(Color.gold .. "Category: " .. category .. Color.reset)
+                    ns.Print("")
 
                     for _, globalName in ipairs(sortedNames) do
-                        DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. labelName .. globalName)
+                        ns.Print(labelName .. globalName)
 
                         local origFmt = (self.originalStrings and self.originalStrings[globalName]) or _G[globalName]
                         local origLine, origErr = renderOrError(origFmt)
-                        DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. labelOriginal .. origLine)
+                        ns.Print(labelOriginal .. origLine)
 
                         local newFmt = self:GetStringValue(category, globalName)
                         local newLine, newErr = renderOrError(newFmt)
-                        DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. labelFormatted .. newLine)
+                        ns.Print(labelFormatted .. newLine)
 
-                        DEFAULT_CHAT_FRAME:AddMessage(PREFIX)
+                        ns.Print("")
 
                         if newErr or origErr then
                             errored = errored + 1
@@ -277,7 +276,7 @@ function PrettyChat:Test(filter)
     end
 
     if not emittedAny then
-        DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. note("(no matching strings)"))
+        ns.Print(note("(no matching strings)"))
         return
     end
 
@@ -286,5 +285,5 @@ function PrettyChat:Test(filter)
     if errored > 0 then
         footer = footer .. (", %d errored"):format(errored)
     end
-    DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. note(footer .. ")"))
+    ns.Print(note(footer .. ")"))
 end

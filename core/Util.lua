@@ -21,3 +21,22 @@ end
 function Util.cmd(s)
     return Color.yellow .. s .. Color.reset
 end
+
+-- Secret-safe output helpers (events-frames-taint-§8). A Blizzard combat
+-- "secret" raises when it hits a `..` concatenation or string.format, which
+-- would break the shared chat printer (ns.Print) or the debug sink (ns.Debug).
+-- IsConcatSafe probes concatenability with table.concat — NEVER `..`, which
+-- would itself raise on a secret — so string/number pass and everything else
+-- (including bools, which Lua also refuses to `..`) does not. SafeToString
+-- returns a display string, substituting a visible placeholder for any value
+-- the probe rejects so a protected value can never reach the output path.
+function Util.IsConcatSafe(v)
+    return (pcall(table.concat, { v })) and true or false
+end
+
+function Util.SafeToString(v)
+    if v == nil then return "nil" end
+    if type(v) == "boolean" then return tostring(v) end
+    if Util.IsConcatSafe(v) then return tostring(v) end
+    return "<secret>"
+end

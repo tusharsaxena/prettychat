@@ -13,6 +13,7 @@
 -- Source files in the same order PrettyChat.toc loads them (libs and the
 -- GlobalStrings chunks are supplied by the mock / not needed headlessly).
 local SOURCES = {
+    "locales/enUS.lua",
     "core/Compat.lua",
     "core/Constants.lua",
     "core/Namespace.lua",
@@ -21,8 +22,8 @@ local SOURCES = {
     "core/Database.lua",
     "core/DebugLog.lua",
     "core/PrettyChat.lua",
+    "defaults/Profile.lua",
     "defaults/Defaults.lua",
-    "locales/enUS.lua",
     "modules/Override.lua",
     "settings/Schema.lua",
     "settings/Slash.lua",

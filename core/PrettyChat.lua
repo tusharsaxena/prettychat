@@ -5,32 +5,29 @@ local addonName, ns = ...
 -- registration, OnInitialize/OnEnable, the shared chat printer, and the combat-gated
 -- panel open. Methods defined in the other files hang off this same PrettyChat object.
 
-local PrettyChat = LibStub("AceAddon-3.0"):NewAddon("PrettyChat", "AceConsole-3.0")
+-- Pass the ns table as the AceAddon object (architecture-§2) so the addon
+-- object and the bootstrap namespace are one table. AceConsole's :Print embed
+-- therefore lands on ns and would clobber the cyan printer, so ns.Print is
+-- reclaimed immediately below, AFTER registration (anti-pattern #36). Keep this
+-- order: NewAddon first, printer definition second.
+local PrettyChat = LibStub("AceAddon-3.0"):NewAddon(ns, addonName, "AceConsole-3.0")
 
 local Color  = ns.Const.Color
 local PREFIX = ns.PREFIX
 
--- Cyan [PC] chat printer — the single seam every module prints through (no raw print()).
+-- Cyan [PC] chat printer — the single seam every module prints through (no raw
+-- print()). Reclaims ns.Print from AceConsole's embed (see above) and routes the
+-- message through the secret-safe stringifier (events-frames-taint-§8) so a
+-- combat-protected value can never taint the output path.
 function ns.Print(msg)
-    DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. msg)
+    DEFAULT_CHAT_FRAME:AddMessage(PREFIX .. ns.Util.SafeToString(msg))
 end
 
-local defaults = {
-    profile = {
-        -- Addon-wide and per-category `enabled` flags are intentionally
-        -- absent. IsAddonEnabled / IsCategoryEnabled treat `nil` as
-        -- default-true (see docs/schema.md), which keeps SavedVariables
-        -- empty until the user disables something. The empty
-        -- `categories` table is documentation-only — AceDB never merges
-        -- {} into user-keyed sub-tables, so removing this line would be
-        -- semantically identical.
-        categories = {},
-    },
-}
-
 function PrettyChat:OnInitialize()
-    -- Merge Database's `global` defaults (schemaVersion) with the profile
-    -- defaults above so AceDB provisions both namespaces.
+    -- Start from the profile defaults (defaults/Profile.lua) and merge
+    -- Database's `global` defaults (schemaVersion) so AceDB provisions both
+    -- the profile and global namespaces.
+    local defaults = ns.ProfileDefaults
     if ns.Database and ns.Database.defaults then
         for k, v in pairs(ns.Database.defaults) do
             defaults[k] = defaults[k] or v

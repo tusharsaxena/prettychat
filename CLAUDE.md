@@ -1,12 +1,32 @@
-# CLAUDE.md
+# CLAUDE.md — Ka0s Pretty Chat
 
 **Ka0s Pretty Chat** — a WoW addon that reformats system chat messages by overriding Blizzard's `GlobalStrings.lua` format strings (not by parsing chat events).
 
 - **Layout:** modular — source `.lua` lives under `core/`, `defaults/`, `locales/`, `modules/`, `settings/`; libraries are vendored under `libs/`. This is the single Ka0s layout (`layout-§1`), used by every addon regardless of size.
 - **Standard:** built to the [Ka0s WoW Addon Standard](https://github.com/tusharsaxena/WowAddonStandards) (`standards/STANDARDS.md` in that repo). The most recent compliance audit + remediation is frozen under [docs/audits/2026-07-12/](./docs/audits/2026-07-12/) (that audit predates the modular restructure and the v2.0.0 standard; re-audit with `/wow-addon:standards-audit`). **Accepted, deliberate deviations are recorded as bullets in this file** (see the generated-data and toc-file-§1 TOC-branding exceptions below) — that list is the source of truth for what intentionally diverges.
-- **Generated-data exception (`layout`):** `GlobalStrings/` is a **generated-data folder at the repo root** — 10 machine-generated chunk files (~22,879 Blizzard reference strings) plus the source dump and `split_globalstrings.py` splitter. The modular layout has no home for bulk generated reference data, so it stays a documented root exception (loaded between `locales/` and `modules/`); regenerate with `python3 GlobalStrings/split_globalstrings.py`.
+- **Generated-data exception (`layout`):** `GlobalStrings/` is a **generated-data folder at the repo root** — 10 machine-generated chunk files (~22,879 Blizzard reference strings) plus the source dump and `split_globalstrings.py` splitter. The modular layout has no home for bulk generated reference data, so it stays a documented root exception (loaded after `defaults/`, before `modules/`); regenerate with `python3 GlobalStrings/split_globalstrings.py`.
 - **Accepted deviation — debug-console font (`debug-logging-§2`):** the on-screen debug console (`core/DebugLog.lua`) ships its monospace font (JetBrains Mono, OFL, under `media/fonts/`) and applies it via the `Const.FONT_MONO` path directly, **without** LibSharedMedia registration. This is a **deliberate design choice, not an oversight**: the debug console is intentionally fixed-monospace (readability of aligned log output does not depend on player taste), and PrettyChat ships **no font/texture/border picker** anywhere — every other font, texture, and border in the addon is a Blizzard default (see the 2026-07-17 media audit), so LSM has no consumer surface and the path constant alone suffices. Not to be "fixed" by adding LSM unless a user-facing media picker is deliberately introduced.
 - **Deliberate deviation from toc-file-§1 (TOC branding):** the `## Title:` keeps its rainbow `|cRRGGBB…|r` colour escapes and `## Author:` keeps its stylised `aDd1kTeD2Ka0s` casing — both are the addon's brand mark, kept intentionally rather than plain-texted/normalised to the standard's `Ka0s Pretty Chat` / `add1kted2ka0s`. `## X-Wago-ID` is intentionally omitted until a real Wago id is available (do not commit a placeholder).
+- **TOC section order (`toc-file-§5`) — standard-internal conflict, resolved in favour of section order:** the TOC file-listing follows `toc-file-§5` — `# Locales` sits immediately after `# Libraries` (`locales/enUS.lua` only builds `ns.L` and has no earlier-load dependency, so loading it first is safe). This is in **tension with `layout-§1`'s load-order list** (`defaults → locales`), which would place Locales after Defaults; the two standard rules disagree on where Locales belongs. Resolved here toward `toc-file-§5` — **raise upstream** against WowAddonStandards to reconcile the two. The non-canonical `# GlobalStrings` section is simply the TOC home of the generated-data root exception noted above.
+
+## Standards compliance (read first)
+
+This repo is built to the **Ka0s WoW Addon Standard**
+(https://github.com/tusharsaxena/WowAddonStandards). All development here — features, refactors,
+doc changes — MUST conform to it. The standard is the source of truth for layout, TOC shape, the
+Ace substrate, schema-driven settings, slash/prefix conventions, locales, Compat, tests/lint, and
+doc structure.
+
+**If a change would deviate from the standard, STOP and flag the deviation explicitly.** Do not
+silently deviate and do not silently "fix" to match. Surface it and let the user decide which of
+two things it is:
+
+1. **An accepted deviation** — this addon intentionally differs; record it as a documented
+   deviation (e.g. in the TOC/README/`docs/` and in the audit bundle), with the reason.
+2. **A change to the standard itself** — the standard's definition should evolve; the update
+   belongs upstream in the WowAddonStandards repo, after which this addon conforms to the new rule.
+
+When in doubt, treat standard conformance as a hard requirement and ask.
 
 ## Before touching code
 

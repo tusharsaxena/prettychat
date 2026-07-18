@@ -50,12 +50,20 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 - Schema.Set emits one [Set] line with no separate [Apply] echo
 - ResetAll emits one [Reset] summary carrying apply counts
 
-### test_slash.lua (4)
+### test_slash.lua (6)
 
 - Schema.FormatValue formats bools and doubles pipes in strings
+- ns.Print emits the cyan [PC] tag (reclaimed after the AceConsole embed)
 - /pc version prints the tagged version line
 - /pc get echoes the gold-key/white-value FormatKV line
+- /pc test routes every line through the [PC] printer
 - /pc list prints the green header and azure category groups
+
+### test_util.lua (3)
+
+- SafeToString renders scalars and nil verbatim
+- SafeToString substitutes <secret> for a value table.concat rejects
+- IsConcatSafe probes concatenability via table.concat, not ..
 
 ## Totals
 
@@ -66,5 +74,6 @@ _Generated — do not hand-edit. Regenerate with `lua tests/run.lua --list > doc
 | test_apply.lua | 6 |
 | test_database.lua | 5 |
 | test_debuglog.lua | 10 |
-| test_slash.lua | 4 |
-| **Total** | **37** |
+| test_slash.lua | 6 |
+| test_util.lua | 3 |
+| **Total** | **42** |

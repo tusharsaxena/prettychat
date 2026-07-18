@@ -14,7 +14,7 @@ Source `.lua` is grouped under `core/`, `defaults/`, `locales/`, `modules/`, and
 | `core/Constants.lua` | Layout constants on `ns.Const` (panel padding / header height / Defaults-button width / spacers / `BUTTON_PAIR_REL`), the `Color` palette (incl. the slash-output `azure` / `listHead` codes), `ns.Const.FONT_MONO` (vendored JetBrains Mono path for the debug console), and `ns.PREFIX` (shared cyan `[PC]` tag). Side-effect-free; loads early so later files can read `ns.Const.*` without an existence check. |
 | `core/Namespace.lua` | Identity bootstrap — publishes `ns.name` and `ns.version` (read from the TOC via `ns.Compat`) so no module re-queries metadata. |
 | `core/State.lua` | Publishes `ns.State` — session-only runtime state (`{ debug = false }`); never persisted, reset every reload/login. |
-| `core/Util.lua` | Publishes `ns.Util` — pure string helpers `trim` / `note` / `cmd` shared by the slash dispatcher. Loads after Constants (reads `ns.Const.Color`). |
+| `core/Util.lua` | Publishes `ns.Util` — pure string helpers `trim` / `note` / `cmd` (slash dispatcher) plus secret-safe output helpers `SafeToString` / `IsConcatSafe` (events-frames-taint-§8) that the chat printer and debug sink route through. Loads after Constants (reads `ns.Const.Color`). |
 | `core/Database.lua` | `ns.Database` — `SCHEMA_VERSION`, `global.schemaVersion` default, and `RunMigrations(db)` (empty migration set today). Merged into AceDB + run in `PrettyChat:OnInitialize`. |
 | `core/DebugLog.lua` | Publishes `ns.DebugLog` (the on-screen debug console — a monospace DIALOG-strata window with a `Debug: ON/OFF` header toggle + Copy/Clear buttons) and `ns.Debug(tag, fmt, …)` (the gated, zero-alloc-when-off sink that routes to the console). The `DebugLog:SetEnabled(on)` seam is the single owner of the session debug flag. |
 | `core/PrettyChat.lua` | AceAddon entry. Registers the object, defines `ns.Print`, runs `OnInitialize` (DB + `ns.Database` migrations + slash registration) and `OnEnable` (snapshot Blizzard originals → `ApplyStrings` → `RegisterPanels`), and owns the combat-gated `OpenConfig`. The override engine and slash dispatch live in `modules/Override.lua` and `settings/Slash.lua`. |
@@ -23,6 +23,7 @@ Source `.lua` is grouped under `core/`, `defaults/`, `locales/`, `modules/`, and
 
 | File | Responsibility |
 |------|----------------|
+| `defaults/Profile.lua` | Publishes `ns.ProfileDefaults` — the AceDB `profile` defaults table (`{ profile = { categories = {} } }`). `core/PrettyChat.lua`'s `OnInitialize` merges it with `ns.Database`'s `global` defaults before `AceDB:New`. |
 | `defaults/Defaults.lua` | The `ns.Defaults` table — canonical per-category format strings, labels, and per-category `enabled` flag. Single source of truth for what categories and strings exist. Eight categories with **81 rows over 79 unique globals** (Loot 19, Currency 4, Money 8, Reputation 14, Experience 20, Honor 6, Tradeskill 8, Misc 2 — `LOOT_ITEM_CREATED_SELF` and `LOOT_ITEM_CREATED_SELF_MULTIPLE` are registered under both Loot and Tradeskill, see [override-pipeline.md](./override-pipeline.md)). |
 | `locales/enUS.lua` | `ns.L` — English-key localization metatable (`__index` returns the key) + seeded enUS UI-string manifest. Wrap new user-facing strings in `L[…]`. |
 
@@ -47,7 +48,7 @@ Source `.lua` is grouped under `core/`, `defaults/`, `locales/`, `modules/`, and
 
 ## Shared infrastructure
 
-- `PrettyChat.toc` — Interface line (`120007`), version, SavedVariables (`PrettyChatDB`), section comments, and file load order. Order is dependency order, not alphabetical: `libs/` → `core/Compat` → `core/Constants` → `core/Namespace` → `core/State` → `core/Util` → `core/Database` → `core/DebugLog` → `core/PrettyChat` → `defaults/Defaults` → `locales/enUS` → GlobalStrings chunks → `modules/Override` → `settings/Schema` → `settings/Slash` → `settings/Panel`.
+- `PrettyChat.toc` — Interface line (`120007`), version, SavedVariables (`PrettyChatDB`), section comments, and file load order. Order is dependency order, not alphabetical: `libs/` → `locales/enUS` → `core/Compat` → `core/Constants` → `core/Namespace` → `core/State` → `core/Util` → `core/Database` → `core/DebugLog` → `core/PrettyChat` → `defaults/Profile` → `defaults/Defaults` → GlobalStrings chunks → `modules/Override` → `settings/Schema` → `settings/Slash` → `settings/Panel`.
 - `libs/` — vendored Ace3 + LibStub. Tracked in git (standard WoW addon practice).
 - `media/` — local copies of the logo + before/after screenshots (the README references CDN URLs, not these — kept as source backups) and `media/fonts/` (vendored JetBrains Mono, OFL), which **is** loaded at runtime by `core/DebugLog.lua` via `ns.Const.FONT_MONO`.
 - `.gitattributes` — forces CRLF on disk for all text files (overrides per-user `core.autocrlf`).

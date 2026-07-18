@@ -184,8 +184,7 @@ for _, r in ipairs(rows) do
         Schema.validation.failed = Schema.validation.failed + 1
         Schema.validation.misses[#Schema.validation.misses + 1] = r.path
         if ns.Print then
-            ns.Print("|cffff5050[schema]|r unresolved path (no backing default): "
-                     .. tostring(r.path))
+            ns.Print("schema: unresolved path (no backing default): " .. tostring(r.path))
         end
     end
 end

@@ -27,7 +27,7 @@ GlobalStrings/   ─▶ ns.GlobalStrings (Blizzard reference, ~22,879 entries)
 
 ## Module Map
 
-Modular layout (`core/`, `defaults/`, `locales/`, `modules/`, `settings/`) — the single Ka0s layout (`layout-§1`). Load order is `PrettyChat.toc` (dependency, not alphabetical): libraries first, then `core/Compat → core/Constants → core/Namespace → core/State → core/Util → core/Database → core/DebugLog → core/PrettyChat → defaults/Defaults → locales/enUS → GlobalStrings chunks → modules/Override → settings/Schema → settings/Slash → settings/Panel`.
+Modular layout (`core/`, `defaults/`, `locales/`, `modules/`, `settings/`) — the single Ka0s layout (`layout-§1`). Load order is `PrettyChat.toc` (dependency, not alphabetical): libraries first, then `locales/enUS → core/Compat → core/Constants → core/Namespace → core/State → core/Util → core/Database → core/DebugLog → core/PrettyChat → defaults/Profile → defaults/Defaults → GlobalStrings chunks → modules/Override → settings/Schema → settings/Slash → settings/Panel`.
 
 | Module | Publishes on `ns` | Role |
 |--------|-------------------|------|
@@ -35,10 +35,11 @@ Modular layout (`core/`, `defaults/`, `locales/`, `modules/`, `settings/`) — t
 | `core/Constants.lua` | `ns.Const`, `ns.PREFIX` | Panel layout constants, `Const.Color` palette (incl. `azure` / `listHead` slash-output codes), `Const.BUTTON_PAIR_REL`, `Const.FONT_MONO` (vendored JetBrains Mono path), and the shared cyan `[PC]` chat prefix. Side-effect-free. |
 | `core/Namespace.lua` | `ns.name`, `ns.version` | Identity bootstrap — records the addon name + version so any module can read them without re-querying the TOC. |
 | `core/State.lua` | `ns.State` | Session-only runtime state (`{ debug = false }`); never persisted, reset every reload/login. |
-| `core/Util.lua` | `ns.Util` | Pure string helpers `trim` / `note` / `cmd` shared by the slash dispatcher. |
+| `core/Util.lua` | `ns.Util` | Pure string helpers `trim` / `note` / `cmd` (slash dispatcher) plus the secret-safe output helpers `SafeToString` / `IsConcatSafe` (events-frames-taint-§8) that the chat printer and debug sink route through. |
 | `core/Database.lua` | `ns.Database` | `SCHEMA_VERSION`, `global.schemaVersion` default, and `RunMigrations(db)` (empty migration set today). |
 | `core/DebugLog.lua` | `ns.DebugLog`, `ns.Debug` | On-screen debug console (monospace window) + the gated `ns.Debug(tag, fmt, …)` sink; the `SetEnabled` seam is the single owner of the session debug flag. |
-| `core/PrettyChat.lua` | `ns.Print` | AceAddon object + lifecycle (`OnInitialize` / `OnEnable`), the cyan `[PC]` chat printer, and the combat-gated `OpenConfig`. |
+| `core/PrettyChat.lua` | `ns.Print` | AceAddon object (the `ns` table itself — passed to `:NewAddon`, architecture-§2) + lifecycle (`OnInitialize` / `OnEnable`), the secret-safe cyan `[PC]` chat printer (reclaimed after AceConsole's `:Print` embed), and the combat-gated `OpenConfig`. |
+| `defaults/Profile.lua` | `ns.ProfileDefaults` | The AceDB `profile` defaults table (`{ profile = { categories = {} } }`); `OnInitialize` merges it with `ns.Database`'s `global` defaults before `AceDB:New`. |
 | `defaults/Defaults.lua` | `ns.Defaults` | Category → format-string default table (label + default per string; per-category `enabled`). |
 | `locales/enUS.lua` | `ns.L` | Localization table with English-key fallback (`__index` returns the key). Seeds the enUS UI-string manifest. |
 | `modules/Override.lua` | `ns.RenderSample` | The override engine — `ApplyStrings`, the enable-cascade predicates, `ResetCategory` / `ResetAll`, and the Test / sample renderer. |
@@ -57,7 +58,7 @@ Topic detail: [module-map.md](./module-map.md), [file-index.md](./file-index.md)
 - `<Category>.<GLOBALNAME>.enabled` — per-string toggle (bool).
 - `<Category>.<GLOBALNAME>.format` — per-string format string.
 
-Every mutation goes through `ns.Schema.Set(path, value)` — the **single write path** used by both `/pc set` and the panel widgets. Row `set()` closures are pure DB writes; `Schema.Set` runs `PrettyChat:ApplyStrings()` + `Schema.NotifyPanelChange()`. `string_format` rows **auto-clear** on a default match (a value equal to the default deletes the stored override). At load, `Schema.validation` records that every row path resolves to a backing default (loud `ns.Print` warn on any miss). Settings persist in `PrettyChatDB` via AceDB on a single shared Default profile; `db.global.schemaVersion` is stamped by `Database.RunMigrations`. Detail: [schema.md](./schema.md).
+Every mutation goes through `ns.Schema.Set(path, value)` — the **single write path** used by both `/pc set` and the panel widgets. Row `set()` closures are pure DB writes; `Schema.Set` runs `PrettyChat:ApplyStrings()` + `Schema.NotifyPanelChange()`. `string_format` rows **auto-clear** on a default match (a value equal to the default deletes the stored override). At load, `Schema.validation` records that every row path resolves to a backing default (loud `ns.Print` warn on any miss). Settings persist in `PrettyChatDB` via AceDB on a single shared Default profile; the `profile` defaults come from `defaults/Profile.lua` (`ns.ProfileDefaults`) and `db.global.schemaVersion` is stamped by `Database.RunMigrations`. Detail: [schema.md](./schema.md).
 
 ## Slash Commands
 

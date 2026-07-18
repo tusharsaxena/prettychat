@@ -61,7 +61,7 @@ local COMMANDS = {
 ns.COMMANDS = COMMANDS
 
 function printHelp(self)
-    ns.Print(note("v" .. VERSION .. " — slash commands (")
+    ns.Print(note("v" .. VERSION .. " slash commands (")
              .. cmd("/prettychat") .. note(" is an alias for ")
              .. cmd("/pc") .. note(")"))
     for _, entry in ipairs(COMMANDS) do

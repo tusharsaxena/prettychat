@@ -4,7 +4,7 @@
 ![CurseForge Version](https://img.shields.io/curseforge/v/919766)
 ![License](https://img.shields.io/badge/License-MIT-orange)
 [![Standard](https://img.shields.io/badge/Ka0s-WoW%20Addon%20Standard-yellow)](https://github.com/tusharsaxena/WowAddonStandards)
-![Tests](https://img.shields.io/badge/Tests-37%2F37_passing-green)
+![Tests](https://img.shields.io/badge/Tests-42%2F42_passing-green)
 
 ![Ka0s Pretty Chat logo](https://media.forgecdn.net/attachments/1659/647/prettychat-logo-v2-jpg.jpg)
 
@@ -45,15 +45,17 @@ You can turn any message type on or off, and change its wording and colors, from
 
 PrettyChat appears in the game's Settings panel under **Ka0s Pretty Chat**. The main page is just the logo, a short description, and the command list; the controls live on nine sub-pages, each a row of its own in the settings list:
 
-* **General** — the master **Enable PrettyChat** switch (turn this off and every message goes back to its original wording), a **Debug console** toggle (shows or hides a small on-screen log window for troubleshooting), a **Test** button that previews every message, and **Reset All to Defaults**.
-* **Loot** — item pickups, your own and group loot, bonus rolls, and currency from loot.
-* **Currency** — currency gained and lost.
-* **Money** — gold, silver, and copper: pickups, loot splits, guild bank deposits, and quest rewards.
-* **Reputation** — faction standing going up and down.
-* **Experience** — the different ways you gain XP (rested, group, raid, and so on).
-* **Honor** — honor you earn.
-* **Tradeskill** — crafting items and opening locks.
-* **Misc** — a couple of leftovers: quest XP rewards and zone exploration.
+| Tab | Covers |
+|-----|--------|
+| **General** | The master **Enable PrettyChat** switch (turn it off and every message goes back to its original wording), a **Debug console** toggle (shows or hides a small on-screen log window for troubleshooting), a **Test** button that previews every message, and **Reset All to Defaults**. |
+| **Loot** | Item pickups, your own and group loot, bonus rolls, and currency from loot. |
+| **Currency** | Currency gained and lost. |
+| **Money** | Gold, silver, and copper: pickups, loot splits, guild bank deposits, and quest rewards. |
+| **Reputation** | Faction standing going up and down. |
+| **Experience** | The different ways you gain XP (rested, group, raid, and so on). |
+| **Honor** | Honor you earn. |
+| **Tradeskill** | Crafting items and opening locks. |
+| **Misc** | A couple of leftovers: quest XP rewards and zone exploration. |
 
 On each page, every message has an **Enable** checkbox and its own **Reset** button. For each one you can see the original wording, type your own replacement, and watch a live **Preview** update as you edit. Turn a message off and it goes back to its original.
 

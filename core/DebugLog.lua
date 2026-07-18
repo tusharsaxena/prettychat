@@ -166,6 +166,9 @@ end
 function D:Add(tag, msg)
     local f = EnsureFrame()
     local ts = date("%H:%M:%S")
+    -- Secret-safe sink (events-frames-taint-§8): neutralise the message before
+    -- it reaches the console/buffer so a combat-protected value can't taint it.
+    msg = ns.Util.SafeToString(msg)
     f.log:AddMessage(D.FormatColored(ts, tag, msg))
     D.buffer[#D.buffer + 1] = D.FormatPlain(ts, tag, msg)
     if #D.buffer > MAX_BUFFER then table.remove(D.buffer, 1) end
@@ -305,6 +308,22 @@ end
 -- Global debug sink. No-op (zero alloc) when debug is off; otherwise appends to the console.
 function ns.Debug(tag, fmt, ...)
     if not (ns.State and ns.State.debug) then return end
-    local msg = select("#", ...) > 0 and fmt:format(...) or fmt
+    local msg = fmt
+    local n = select("#", ...)
+    if n > 0 then
+        -- Neutralise any combat-protected secret before it reaches
+        -- string.format (events-frames-taint-§8); safe scalars pass through
+        -- with their type intact so %d/%f conversions still work.
+        local args = {}
+        for i = 1, n do
+            local v = select(i, ...)
+            if v == nil or type(v) == "boolean" or ns.Util.IsConcatSafe(v) then
+                args[i] = v
+            else
+                args[i] = "<secret>"
+            end
+        end
+        msg = fmt:format(unpack(args, 1, n))
+    end
     D:Add(tag, msg)
 end

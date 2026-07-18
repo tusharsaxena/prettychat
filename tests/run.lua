@@ -70,6 +70,7 @@ local SUITES = {
     "test_database",
     "test_debuglog",
     "test_slash",
+    "test_util",
 }
 
 -- Register every suite. Calling the suite chunk runs its top-level setup
