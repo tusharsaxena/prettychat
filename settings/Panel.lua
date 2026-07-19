@@ -217,9 +217,12 @@ end
 -- Panel + scroll
 -- ---------------------------------------------------------------------
 
-local function createPanel(name, title, opts)
+-- The Settings API registers panels by frame object (RegisterCanvasLayout*),
+-- and the display label comes from panel.name below — so these frames need no
+-- global name. Created anonymous to keep them off _G (Ka0s §4.1).
+local function createPanel(title, opts)
     opts = opts or {}
-    local panel = CreateFrame("Frame", name)
+    local panel = CreateFrame("Frame", nil)
     panel.name = title
     panel:Hide()
 
@@ -633,7 +636,7 @@ local function registerPanels()
     end
 
     -- Parent page
-    local parentCtx = createPanel("PrettyChatParentPanel", PARENT_TITLE, { isMain = true })
+    local parentCtx = createPanel(PARENT_TITLE, { isMain = true })
     local parentRendered = false
     parentCtx.panel:SetScript("OnShow", function()
         if parentRendered then return end
@@ -648,7 +651,7 @@ local function registerPanels()
 
     -- Sub-pages
     for _, category in ipairs(CATEGORY_ORDER) do
-        local catCtx = createPanel("PrettyChatPanel_" .. category, category, {
+        local catCtx = createPanel(category, {
             defaultsButton  = (category ~= "General"),
             defaultsTooltip = (category ~= "General")
                 and ("Reset all " .. category .. " strings to defaults.")
