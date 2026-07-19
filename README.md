@@ -12,6 +12,13 @@ PrettyChat cleans up World of Warcraft's system messages — the lines you get f
 
 You can turn any message type on or off, and change its wording and colors, from the in-game settings panel or from chat with the `/pc` command.
 
+## What's new in 1.4.0
+
+- **New on-screen debug console.** `/pc debug` — or the new **Debug console** toggle on the General page — opens a small log window for troubleshooting. It's off by default and lasts only the current session.
+- **The per-category Defaults button works again.** Clicking **Defaults** on a category page now actually restores just that category to its defaults.
+- **Reset restores the on/off state too.** A message's **Reset** button now puts its Enable switch back to default, not just its wording and colors.
+- **Updated for the current game patch** (Midnight 12.0.7).
+
 ## Screenshots
 
 **_Without Pretty Chat_**
@@ -96,7 +103,7 @@ Found a bug or want a new feature? Everything is tracked on GitHub: [https://git
 
 | Version | Date | Highlights |
 |---------|------|------------|
-| 1.4.0 | 2026-07-12 | Added `/pc debug`, a session-only on-screen log window. Updated for the current game patch. |
+| 1.4.0 | 2026-07-12 | Added an on-screen debug console — `/pc debug`, or the new General-page **Debug console** toggle — a session-only log window for troubleshooting. Fixed the per-category **Defaults** button, and made a message's **Reset** restore its on/off state too. Updated for the current game patch. |
 | 1.3.0 | 2026-05-03 | Rebuilt the settings panel: a page per category plus a General page (master Enable, Test, Reset All), a logo-and-commands landing page, and a cleaner layout for each message. Added the `/pc` commands (`help`, `list`, `get`, `set`, `reset`, `resetall`, `test`) so you can change any setting from chat, plus a `[PC]` tag on the addon's chat output. |
 | 1.2.0 | 2026-04-24 | Added a searchable reference of the game's message strings to the settings panel. |
 | 1.1.0 | 2026-02-14 | Made the game's message formats editable from the settings panel. |
