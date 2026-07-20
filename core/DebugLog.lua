@@ -16,6 +16,11 @@ local COL_ON_RGB,  COL_OFF_RGB = { 0.25, 1.00, 0.25 }, { 1.00, 0.25, 0.25 }  -- 
 D.buffer = D.buffer or {}
 local MAX_BUFFER = 500
 
+-- Debug-logging-§11 chrome dimensions: the height reserved at the window bottom for the
+-- line-counter status bar, and the vertical scrollbar track width down the right edge.
+local STATUS_H = 16
+local BAR_W    = 8
+
 -- Backdrop shared by the console + copy windows so they read like the addon's own frames.
 local BACKDROP = {
     bgFile = "Interface\\Buttons\\WHITE8x8",
@@ -125,16 +130,69 @@ local function EnsureFrame()
 
     local log = CreateFrame("ScrollingMessageFrame", nil, frame)
     log:SetPoint("TOPLEFT", 8, -(26 + 6))
-    log:SetPoint("BOTTOMRIGHT", -8, 14)
+    -- Right inset clears the scrollbar gutter; bottom inset clears the status bar
+    -- (and keeps the newest line's descenders off the window border).
+    log:SetPoint("BOTTOMRIGHT", -(BAR_W + 8), STATUS_H + 4)
     log:SetFont(ns.Const.FONT_MONO, 10, "")
     log:SetJustifyH("LEFT")
     log:SetFading(false)
-    log:SetMaxLines(500)
+    log:SetMaxLines(MAX_BUFFER)
     log:EnableMouseWheel(true)
     log:SetScript("OnMouseWheel", function(self, delta)
         if delta > 0 then self:ScrollUp() else self:ScrollDown() end
+        D:UpdateScrollBar()   -- keep the thumb in step with wheel scrolling
     end)
     frame.log = log
+
+    -- Thin flat scrollbar synced to the message frame's scroll offset. A
+    -- ScrollingMessageFrame has no native scrollbar (wheel-only), so a plain
+    -- vertical Slider drives its offset (debug-logging-§11). Always shown but
+    -- inert-when-it-fits, matching the options-panel scrollbar (options-ui-§10).
+    -- Vertical Slider convention: value 0 = thumb top = oldest; the message-frame
+    -- offset is inverted (0 = newest/bottom), so offset = maxOffset - value.
+    local bar = CreateFrame("Slider", nil, frame)
+    bar:SetOrientation("VERTICAL")
+    bar:SetWidth(BAR_W)
+    bar:SetPoint("TOPRIGHT", frame, "TOPRIGHT", -6, -(26 + 6))
+    bar:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -6, STATUS_H + 4)
+    bar:SetMinMaxValues(0, 0)
+    bar:SetValueStep(1)
+    bar:SetObeyStepOnDrag(true)
+    bar:SetValue(0)
+    local track = bar:CreateTexture(nil, "BACKGROUND")
+    track:SetAllPoints()
+    track:SetColorTexture(0.24, 0.24, 0.27, 0.30)
+    local thumb = bar:CreateTexture(nil, "ARTWORK")
+    thumb:SetColorTexture(0.5, 0.5, 0.55, 0.85)
+    thumb:SetSize(BAR_W, 36)
+    bar:SetThumbTexture(thumb)
+    -- Drag → scroll. Guarded by frame._syncing so the UpdateScrollBar → SetValue
+    -- feedback path can't loop back through here (debug-logging-§11). Method-presence
+    -- + number guards keep the headless mock a clean no-op.
+    bar:SetScript("OnValueChanged", function(_, value)
+        if frame._syncing then return end
+        local l = frame.log
+        if not (l.GetMaxScrollRange and l.SetScrollOffset) then return end
+        local maxOffset = l:GetMaxScrollRange()
+        if type(maxOffset) ~= "number" then return end
+        l:SetScrollOffset(maxOffset - math.floor(value + 0.5))
+    end)
+    frame.scrollBar = bar
+
+    -- Bottom status bar: a 1px divider + a right-aligned "N / MAX lines" counter in
+    -- the same monospace font as the log (debug-logging-§11).
+    local statusDivider = frame:CreateTexture(nil, "ARTWORK")
+    statusDivider:SetPoint("BOTTOMLEFT", frame, "BOTTOMLEFT", 8, STATUS_H)
+    statusDivider:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -8, STATUS_H)
+    statusDivider:SetHeight(1)
+    statusDivider:SetColorTexture(0.24, 0.24, 0.27, 0.85)
+
+    local lineCount = frame:CreateFontString(nil, "OVERLAY")
+    lineCount:SetPoint("BOTTOMRIGHT", frame, "BOTTOMRIGHT", -10, 3)
+    lineCount:SetFont(ns.Const.FONT_MONO, 10, "")
+    lineCount:SetJustifyH("RIGHT")
+    lineCount:SetTextColor(0.6, 0.6, 0.62)
+    frame.lineCount = lineCount
 
     applySkin(frame)
     frame:HookScript("OnShow", function() D:RefreshHeader(); notifyPanelVisibility() end)
@@ -145,6 +203,12 @@ local function EnsureFrame()
     if type(UISpecialFrames) == "table" then
         table.insert(UISpecialFrames, "PrettyChatDebugWindow")
     end
+
+    -- Initial scrollbar/counter sync LAST (debug-logging-§11 build-order): after the
+    -- header, RefreshHeader, and UISpecialFrames registration, so a frame-API surprise
+    -- inside the sync can never abort the header-label / ESC-to-close wiring above.
+    D:UpdateScrollBar()
+    D:UpdateStatus()
     return frame
 end
 
@@ -172,11 +236,42 @@ function D:Add(tag, msg)
     f.log:AddMessage(D.FormatColored(ts, tag, msg))
     D.buffer[#D.buffer + 1] = D.FormatPlain(ts, tag, msg)
     if #D.buffer > MAX_BUFFER then table.remove(D.buffer, 1) end
+    D:UpdateScrollBar()
+    D:UpdateStatus()
+end
+
+-- Sync the scrollbar thumb + range to the log's current scroll offset. Uses the Lua
+-- ScrollingMessageFrameMixin API (GetMaxScrollRange / GetScrollOffset), where offset 0 =
+-- bottom (newest) and offset == maxRange = top (oldest) — never the old C getters
+-- GetNumLinesDisplayed / GetCurrentScroll, which are nil on this mixin and raise on first
+-- open (anti-pattern #41). No-op until the frame exists; also a clean no-op under the
+-- headless mock, whose stub methods return non-numbers (the type guard catches that).
+function D:UpdateScrollBar()
+    if not (frame and frame.log and frame.scrollBar) then return end
+    local log, bar = frame.log, frame.scrollBar
+    if not (log.GetMaxScrollRange and log.GetScrollOffset) then return end
+    local maxOffset, off = log:GetMaxScrollRange(), log:GetScrollOffset()
+    if type(maxOffset) ~= "number" or type(off) ~= "number" then return end
+    frame._syncing = true   -- suppress the OnValueChanged → SetScrollOffset feedback loop
+    bar:SetMinMaxValues(0, maxOffset)
+    bar:SetValue(maxOffset - off)
+    frame._syncing = false
+    bar:EnableMouse(maxOffset > 0)   -- inert (but still shown) when everything fits
+end
+
+-- Update the bottom status bar's line counter. #D.buffer is the live line count, capped at
+-- MAX_BUFFER in lock-step with the log's SetMaxLines (debug-logging-§11).
+function D:UpdateStatus()
+    if frame and frame.lineCount then
+        frame.lineCount:SetText(("%d / %d lines"):format(#D.buffer, MAX_BUFFER))
+    end
 end
 
 function D:Clear()
     if frame and frame.log then frame.log:Clear() end
     wipe(D.buffer)
+    D:UpdateScrollBar()
+    D:UpdateStatus()
 end
 
 -- ── Copy window: read-through EditBox holding the whole log as plain text (§6) ──────────
