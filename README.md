@@ -6,7 +6,7 @@
 [![Standard](https://img.shields.io/badge/Ka0s-WoW%20Addon%20Standard-yellow)](https://github.com/tusharsaxena/WowAddonStandards)
 ![Tests](https://img.shields.io/badge/Tests-42%2F42_passing-green)
 
-![Ka0s Pretty Chat logo](https://media.forgecdn.net/attachments/1659/647/prettychat-logo-v2-jpg.jpg)
+![Logo](https://media.forgecdn.net/attachments/1659/647/prettychat-logo-v2-jpg.jpg)
 
 PrettyChat cleans up World of Warcraft's system messages — the lines you get for loot, currency, gold, reputation, experience, honor, and crafting — and rewrites them in a tidy, color-coded layout that's easy to scan in a busy chat window.
 
@@ -57,7 +57,7 @@ You can turn any message type on or off, and change its wording and colors, from
 | `/pc reset <category>` | Restore one category to PrettyChat's defaults |
 | `/pc resetall` | Restore everything to defaults |
 | `/pc test` | Preview how every message looks, before and after — works even while the addon is off |
-| `/pc debug` | Open a small on-screen log window for troubleshooting (off by default) |
+| `/pc debug` | Open the on-screen debug log window. `/pc debug on` / `off` start and stop logging (off by default) |
 
 ### Settings panel
 
@@ -95,7 +95,10 @@ A few things worth knowing:
 | Does this work with ElvUI, Glass, or other chat addons? | Yes, with nothing to configure. PrettyChat changes the game's message templates before any chat window sees them, so whatever you use to display chat gets the tidy version automatically. |
 | Why do some lines still look like the default? | Something's switched off. Check the master switch, the category, and that specific message — `/pc list <category>` shows them all in one place. A switched-off message always shows its original. |
 | I edited a message and now it looks broken. | Your version is missing or misusing the `%s` / `%d` placeholders. Copy the original wording from the panel and edit around the placeholders, or turn the message off to restore it. |
+| Can I change the colors? | Yes — the colors are part of the wording. Each message's text carries WoW color codes (`\|cffRRGGBB…\|r`), so recolor a line by editing those hex values right in its **New** box on the settings panel. There's no separate color picker. (Editing from chat works too, but you have to double every `\|` to `\|\|`.) |
+| How do I preview my edits without waiting for real loot? | Two ways, and both work even while the addon is switched off. On the settings panel, each message has a live **Preview** that updates as you type. From chat, `/pc test` prints a before/after sample of every message — add a category (`/pc test category Loot`) or one string (`/pc test formatstring LOOT_ITEM_SELF`) to narrow it down. |
 | Where are my settings saved? | They're shared across every character on your account — one configuration for all of them. Separate per-character or per-realm settings aren't available yet; if you'd like them, open an issue. |
+| What's the **Debug console** for? Do I need it? | No — it's just a troubleshooting aid for when you're filing a bug. `/pc debug` (or the General-page toggle) opens a small on-screen log window. It starts empty because logging is off by default: turn it on with `/pc debug on` (or the window's own **Debug** switch), reproduce the problem, then use the window's **Copy** button to grab the text for your issue. Logging is session-only — it resets every reload. |
 
 ## Troubleshooting
 
@@ -105,6 +108,8 @@ A few things worth knowing:
 | A message I edited looks broken | Your wording dropped or misused a `%s` / `%d` placeholder. Restore the category with `/pc reset <category>`, or copy the original from the panel and edit around the placeholders. |
 | The settings panel won't open | Wait until you're fully loaded in, and note it won't open during combat. If the main page opens but a sub-page doesn't, click the sub-page's row in the settings list. |
 | I want a clean slate | One category: `/pc reset <category>`. Everything: `/pc resetall`, or **Reset All to Defaults** on the General page. |
+| I opened the debug console but it's empty | The window and logging are separate switches. Opening the window (`/pc debug`) doesn't start logging — turn logging on first with `/pc debug on`, or the **Debug** toggle inside the window, then reproduce the problem. Use **Copy** to lift the log into a bug report. |
+| I edited a crafting message and my change won't stick | A couple of strings (item and multi-item crafting results) live under both **Loot** and **Tradeskill**. They share one game template, so whichever of the two you edited last, after a `/reload` the **Tradeskill** version wins. Edit it in one place — the panel's Enable tooltip flags these shared strings. |
 
 ## Issues and feature requests
 
