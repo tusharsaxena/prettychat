@@ -23,11 +23,22 @@ You can turn any message type on or off, and change its wording and colors, from
 
 **_Without Pretty Chat_**
 
-![Without Pretty Chat](https://media.forgecdn.net/attachments/738/967/before.png)
+![Without Pretty Chat](https://media.forgecdn.net/attachments/1806/585/prettychat-screenshot-01-png.png)
 
 **_With Pretty Chat_**
 
-![With Pretty Chat](https://media.forgecdn.net/attachments/738/969/after.png)
+![With Pretty Chat](https://media.forgecdn.net/attachments/1806/586/prettychat-screenshot-02-png.png)
+
+**_Test Mode_**
+
+![Test Mode](https://media.forgecdn.net/attachments/1806/591/prettychat-screenshot-03-png.png)
+
+**_Settings Panel_**
+
+![Settings Panel](https://media.forgecdn.net/attachments/1806/588/prettychat-screenshot-04-png.png)
+
+![Settings Panel](https://media.forgecdn.net/attachments/1806/589/prettychat-screenshot-05-png.png)
+
 
 ## Usage
 
